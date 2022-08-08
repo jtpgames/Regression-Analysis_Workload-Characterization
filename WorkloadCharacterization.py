@@ -1,18 +1,21 @@
+import os
 import re
 from calendar import day_abbr
 from datetime import datetime
 from glob import glob
 
 from re import search
+from statistics import mean
 
 import typer
+from joblib import dump, load
 from pandas import DataFrame
 
 import plotly.express as px
 from plotly.graph_objs import Figure
 from plotly.subplots import make_subplots
 
-from Common import detect_response_time_outliers, remove_outliers_from
+from Common import detect_response_time_outliers, remove_outliers_from, read_data_line_from_log_file
 from CommonDb import read_all_performance_metrics_from_db, known_request_types
 
 
@@ -250,21 +253,157 @@ def draw_annotation(fig: Figure, text, x, y):
     )
 
 
+def extract_request_execution_times_and_plot():
+    if os.path.exists("cache/response_times_by_type.joblib"):
+        typer.secho("Using cache", fg=typer.colors.GREEN)
+        response_times_by_type = load("cache/response_times_by_type.joblib")
+    else:
+        typer.secho("Extracting response_times_by_type from log files", fg=typer.colors.YELLOW)
+        response_times_by_type = extract_request_execution_times()
+
+    if not os.path.exists("cache"):
+        os.makedirs("cache")
+
+    dump(response_times_by_type, "cache/response_times_by_type.joblib")
+
+    average_response_times_by_type = (mean(x) for x in response_times_by_type.values())
+
+    default_color = "blue"
+    colors = {"ID_REQ_KC_STORE7D3BPACKET": "red"}
+
+    color_discrete_map = {
+        c: colors.get(c, default_color)
+        for c in response_times_by_type.keys()
+    }
+
+    df = DataFrame(
+        data={
+            'Response time ms': list(average_response_times_by_type),
+            'Request type': response_times_by_type.keys()
+        }
+    )
+    fig = px.bar(
+        df,
+        y="Response time ms",
+        x="Request type",
+        color="Request type",
+        log_y=True,
+        color_discrete_map=color_discrete_map
+    )
+    fig.update_traces(showlegend=False)
+    fig.update_xaxes(showticklabels=False)
+    draw_annotation(
+        fig,
+        f"Number of different request types: {len(response_times_by_type.keys())}",
+        0.00,
+        1.00
+    )
+    fig.show()
+
+    alarm_response_times = response_times_by_type["ID_REQ_KC_STORE7D3BPACKET"]
+    typer.echo("Response Times for alarm messages")
+    typer.echo(f"Count: {len(alarm_response_times)}")
+    typer.echo(f"Min: {min(alarm_response_times)}")
+    typer.echo(f"Avg: {mean(alarm_response_times)}")
+    typer.echo(f"Max: {max(alarm_response_times)}")
+
+    df = DataFrame(alarm_response_times, columns=["Response time ms"])
+    fig = px.histogram(
+        df,
+        x="Response time ms",
+        log_y=True,
+        text_auto=True,
+        histnorm='percent'
+    )
+    draw_annotation(
+        fig,
+        f"</br>Min alarm response time: {min(alarm_response_times)}</br>"
+        f"Average alarm response time: {mean(alarm_response_times)}</br>"
+        f"Max alarm response time: {max(alarm_response_times)}",
+        1.00,
+        1.00
+    )
+    fig.show()
+
+    alarm_response_times_cleaned = (r for r in alarm_response_times if r > 0)
+    df = DataFrame(alarm_response_times_cleaned, columns=["Response time ms"])
+    outliers = detect_response_time_outliers(df, column_name="Response time ms")
+    print("Number of outliers: ", len(outliers))
+    df = remove_outliers_from(df, outliers)
+
+    fig = px.histogram(
+        df,
+        x="Response time ms",
+        text_auto=True,
+        histnorm='percent'
+    )
+    draw_annotation(
+        fig,
+        f"98.95 % of all observed alarm response times are under 100 ms",
+        0.00,
+        1.00
+    )
+    fig.update_traces(
+        xbins_size=100,
+        textfont_size=12,
+        textangle=0,
+        textposition="outside",
+        cliponaxis=False
+    )
+    fig.show()
+
+    fig = px.histogram(
+        df,
+        x="Response time ms",
+        text_auto=True,
+        histnorm='percent'
+    )
+    fig.update_traces(xbins_size=10, xbins_start=1, xbins_end=100)
+    fig.show()
+
+
+def extract_request_execution_times():
+    files = glob("data/Conv*.log")
+
+    buckets = {}
+
+    for file_path in sorted(files):
+        typer.secho(file_path, fg=typer.colors.MAGENTA)
+        for line in read_data_line_from_log_file(file_path):
+            request_type = line["request_type"]
+            if request_type in buckets:
+                buckets[request_type].append(float(line["response_time"]))
+            else:
+                buckets[request_type] = [float(line["response_time"])]
+
+    return buckets
+
+
 app = typer.Typer()
+files_app = typer.Typer()
+app.add_typer(files_app, name="use_files", help="Use log files as the datasource for workload characterization.")
 
 
-@app.command()
-def use_files():
+@files_app.command("requests")
+def use_requests():
     """
-    Uses the requests_per_time_unit_*.logs as the datasource for workload characterization.
+    Use the requests_per_time_unit_*.logs.
     """
     extract_and_plot_requests_per_time_unit()
+
+
+@files_app.command("conv")
+def use_converted_logs():
+    """
+    Use the Conv_*.logs.
+    """
+    extract_request_execution_times_and_plot()
 
 
 @app.command()
 def use_db():
     """
-    Uses the db as the datasource for workload characterization.
+    Use the db as the datasource for workload characterization.
     """
 
     training_data = DataFrame(columns=[

@@ -134,9 +134,9 @@ def read_performance_metrics_from_log_file(path: str):
     return df
 
 
-def detect_response_time_outliers(data: DataFrame):
+def detect_response_time_outliers(data: DataFrame, column_name="Response Time s"):
     anomalies = []
-    response_times = data['Response Time s']
+    response_times = data[column_name]
 
     # Set upper and lower limit to 3 standard deviation
     random_data_std = std(response_times)
