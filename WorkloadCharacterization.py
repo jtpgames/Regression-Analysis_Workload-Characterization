@@ -18,6 +18,8 @@ from plotly.subplots import make_subplots
 from Common import detect_response_time_outliers, remove_outliers_from, read_data_line_from_log_file
 from CommonDb import read_all_performance_metrics_from_db, known_request_types
 
+RESPONSE_TIMES_BY_TYPE_CACHE = "cache/response_times_by_type.joblib"
+
 
 def get_number_from_weekday(weekday_abbr):
     return day_abbr.index(weekday_abbr)
@@ -254,19 +256,22 @@ def draw_annotation(fig: Figure, text, x, y):
 
 
 def extract_request_execution_times_and_plot():
-    if os.path.exists("cache/response_times_by_type.joblib"):
+    if os.path.exists(RESPONSE_TIMES_BY_TYPE_CACHE):
         typer.secho("Using cache", fg=typer.colors.GREEN)
-        response_times_by_type = load("cache/response_times_by_type.joblib")
+        response_times_by_type = load(RESPONSE_TIMES_BY_TYPE_CACHE)
     else:
         typer.secho("Extracting response_times_by_type from log files", fg=typer.colors.YELLOW)
         response_times_by_type = extract_request_execution_times()
 
-    if not os.path.exists("cache"):
-        os.makedirs("cache")
+        if not os.path.exists("cache"):
+            os.makedirs("cache")
 
-    dump(response_times_by_type, "cache/response_times_by_type.joblib")
+        dump(response_times_by_type, RESPONSE_TIMES_BY_TYPE_CACHE)
 
     average_response_times_by_type = (mean(x) for x in response_times_by_type.values())
+
+    if not os.path.exists("created_figures"):
+        os.makedirs("created_figures")
 
     default_color = "blue"
     colors = {"ID_REQ_KC_STORE7D3BPACKET": "red"}
@@ -298,7 +303,8 @@ def extract_request_execution_times_and_plot():
         0.00,
         1.00
     )
-    fig.show()
+    # fig.show()
+    fig.write_image("created_figures/average_response_times_of_each_request_type.pdf", width=1280)
 
     alarm_response_times = response_times_by_type["ID_REQ_KC_STORE7D3BPACKET"]
     typer.echo("Response Times for alarm messages")
@@ -317,13 +323,14 @@ def extract_request_execution_times_and_plot():
     )
     draw_annotation(
         fig,
-        f"</br>Min alarm response time: {min(alarm_response_times)}</br>"
-        f"Average alarm response time: {mean(alarm_response_times)}</br>"
-        f"Max alarm response time: {max(alarm_response_times)}",
+        f"</br>Min alarm response time: {min(alarm_response_times)} ms</br>"
+        f"Average alarm response time: {mean(alarm_response_times)} ms</br>"
+        f"Max alarm response time: {max(alarm_response_times)} ms",
         1.00,
         1.00
     )
-    fig.show()
+    # fig.show()
+    fig.write_image("created_figures/response_time_distribution_of_alarm_messages.pdf", width=1280)
 
     alarm_response_times_cleaned = (r for r in alarm_response_times if r > 0)
     df = DataFrame(alarm_response_times_cleaned, columns=["Response time ms"])
@@ -350,7 +357,8 @@ def extract_request_execution_times_and_plot():
         textposition="outside",
         cliponaxis=False
     )
-    fig.show()
+    # fig.show()
+    fig.write_image("created_figures/response_time_distribution_of_alarm_messages_after_outlier_removal.pdf", width=1280)
 
     fig = px.histogram(
         df,
@@ -359,7 +367,8 @@ def extract_request_execution_times_and_plot():
         histnorm='percent'
     )
     fig.update_traces(xbins_size=10, xbins_start=1, xbins_end=100)
-    fig.show()
+    # fig.show()
+    fig.write_image("created_figures/response_time_distribution_of_alarm_messages_after_outlier_removal_zoomed.pdf", width=1280)
 
 
 def extract_request_execution_times():
