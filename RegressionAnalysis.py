@@ -1,3 +1,4 @@
+import json
 import re
 import resource
 from datetime import datetime, time
@@ -12,9 +13,11 @@ import typer
 from joblib import dump
 from matplotlib import ticker
 from numpy import std, mean, array, dot
+from onnxconverter_common import FloatTensorType
 
 from pandas import DataFrame
 from pandas.core.groupby import DataFrameGroupBy
+from skl2onnx import convert_sklearn
 from sklearn.ensemble import VotingRegressor, GradientBoostingRegressor, RandomForestRegressor, AdaBoostRegressor
 from sklearn.isotonic import IsotonicRegression
 from sklearn.linear_model import LinearRegression, Ridge, ElasticNet, Lasso, SGDRegressor
@@ -25,6 +28,8 @@ from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeRegressor
 from typing import Tuple
+
+from sklearn2pmml import PMMLPipeline, sklearn2pmml
 
 from Common import read_performance_metrics_from_log_file, detect_response_time_outliers, remove_outliers_from
 from CommonDb import read_all_performance_metrics_from_db, known_request_types
@@ -254,11 +259,16 @@ def main(
         print("%s: Accuracy: %0.2f (+/- %0.2f)" % (name, cv_results.mean(), cv_results.std() * 2))
     print("====")
 
-    exit(1)
+    # exit(1)
 
     model = models[1][1]
 
     model.fit(X_train, y_train)
+
+    pipeline = PMMLPipeline([
+        ("decisiontree", DecisionTreeRegressor())
+    ])
+    pipeline.fit(X_train, y_train)
 
     predictions = model.predict(X_test)
 
@@ -288,6 +298,16 @@ def main(
 
     dump(model, "predictive_model.joblib")
     dump(known_request_types, "requests_mapping.joblib")
+
+    with open("requests_mapping.json", "w") as write_file:
+        json.dump(known_request_types, write_file)
+
+    sklearn2pmml(pipeline, "predictive_model.pmml", with_repr=True)
+
+    initial_type = [('float_input', FloatTensorType([None, 3]))]
+    onx = convert_sklearn(model, initial_types=initial_type, verbose=1)
+    with open("predictive_model.onnx", "wb") as f:
+        f.write(onx.SerializeToString())
 
     exit(1)
 
