@@ -273,7 +273,7 @@ def extract_request_execution_times_and_plot():
     if not os.path.exists("created_figures"):
         os.makedirs("created_figures")
 
-    default_color = "blue"
+    default_color = "black"
     colors = {"ID_REQ_KC_STORE7D3BPACKET": "red"}
 
     color_discrete_map = {
@@ -305,6 +305,7 @@ def extract_request_execution_times_and_plot():
     )
     # fig.show()
     fig.write_image("created_figures/average_response_times_of_each_request_type.pdf", width=1280)
+    # ////////////////////////////////////////////////////////////
 
     alarm_response_times = response_times_by_type["ID_REQ_KC_STORE7D3BPACKET"]
     typer.echo("Response Times for alarm messages")
@@ -318,8 +319,9 @@ def extract_request_execution_times_and_plot():
         df,
         x="Response time ms",
         log_y=True,
-        text_auto=True,
-        histnorm='percent'
+        # text_auto=True,
+        histnorm='percent',
+        color_discrete_sequence=['black']
     )
     draw_annotation(
         fig,
@@ -329,8 +331,28 @@ def extract_request_execution_times_and_plot():
         1.00,
         1.00
     )
-    # fig.show()
+    fig.show()
     fig.write_image("created_figures/response_time_distribution_of_alarm_messages.pdf", width=1280)
+    # ////////////////////////////////////////////////////////////
+
+    fig = px.histogram(
+        df,
+        x="Response time ms",
+        log_y=True,
+        text_auto=True,
+        histnorm='percent',
+        color_discrete_sequence=['black']
+    )
+    draw_annotation(
+        fig,
+        f"91.45 % of all observed alarm response times are between 30 and 240 ms",
+        1.00,
+        1.00
+    )
+    fig.update_xaxes(range=[0, 500])
+    fig.show()
+    fig.write_image("created_figures/response_time_distribution_of_alarm_messages_zoomed.pdf", width=1280)
+    # ////////////////////////////////////////////////////////////
 
     alarm_response_times_cleaned = (r for r in alarm_response_times if r > 0)
     df = DataFrame(alarm_response_times_cleaned, columns=["Response time ms"])
@@ -359,6 +381,7 @@ def extract_request_execution_times_and_plot():
     )
     # fig.show()
     fig.write_image("created_figures/response_time_distribution_of_alarm_messages_after_outlier_removal.pdf", width=1280)
+    # ////////////////////////////////////////////////////////////
 
     fig = px.histogram(
         df,
