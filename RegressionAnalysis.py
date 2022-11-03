@@ -234,11 +234,12 @@ def main(
     # orig_X_test = validation_data.iloc[:, :-1]
     # y_test = validation_data.iloc[:, -1]
 
-    orig_X_train, orig_X_test, y_train, y_test = train_test_split(X,
-                                                                  y,
-                                                                  test_size=0.2,
-                                                                  random_state=42
-                                                                  )
+    orig_X_train, orig_X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=0.2,
+        random_state=42
+    )
 
     # take a subset of X's columns (omit timestamp and weekday)
     # X_train = orig_X_train.iloc[:, 2:7]
@@ -274,22 +275,22 @@ def main(
 
     print("====")
 
-    models = []
-    models.append(('LR', LinearRegression()))
-    # models.append(('Ridge', Ridge()))
-    # models.append(('Lasso', Lasso()))
-    # models.append(('ElasticNet', ElasticNet()))
-    models.append(('DT', DecisionTreeRegressor()))
-    # models.append(('SGD', SGDRegressor()))
-    # models.append(('MLP', MLPRegressor(learning_rate_init=0.01, early_stopping=True)))
-    # models.append(('KNN', KNeighborsRegressor(weights='distance')))
-    # models.append(('AdaLR', AdaBoostRegressor(LinearRegression(), n_estimators=10)))
-    # models.append(('AdaDT', AdaBoostRegressor(DecisionTreeRegressor(), n_estimators=10)))
+    estimators = []
+    estimators.append(('LR', LinearRegression()))
+    # estimators.append(('Ridge', Ridge()))
+    # estimators.append(('Lasso', Lasso()))
+    # estimators.append(('ElasticNet', ElasticNet()))
+    estimators.append(('DT', DecisionTreeRegressor()))
+    # estimators.append(('SGD', SGDRegressor()))
+    # estimators.append(('MLP', MLPRegressor(learning_rate_init=0.01, early_stopping=True)))
+    # estimators.append(('KNN', KNeighborsRegressor(weights='distance')))
+    # estimators.append(('AdaLR', AdaBoostRegressor(LinearRegression(), n_estimators=10)))
+    # estimators.append(('AdaDT', AdaBoostRegressor(DecisionTreeRegressor(), n_estimators=10)))
 
-    print("== Evaluating each model in turn ==")
+    print("== Evaluating each estimator in turn ==")
     results = []
     names = []
-    for name, model in models:
+    for name, model in estimators:
         cv_results = cross_val_score(model, X_train, y_train)
         results.append(cv_results)
         names.append(name)
@@ -298,7 +299,7 @@ def main(
 
     # exit(1)
 
-    target_model = models[0]
+    target_model = estimators[0]
 
     estimator_name = target_model[0]
     estimator = target_model[1]
