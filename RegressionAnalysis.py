@@ -2,17 +2,23 @@ import json
 import re
 import resource
 from datetime import datetime, time
-from time import strftime, gmtime
+from pathlib import Path
+from time import strftime, gmtime, perf_counter
 
 from glob import glob
 from calendar import day_abbr
 
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+import numpy
+
+from plotly.subplots import make_subplots
+
 import typer
 from joblib import dump
 from matplotlib import ticker
-from numpy import std, mean, array, dot
+from numba import jit, njit
+from numpy import std, mean, array, dot, ndarray
 from onnxconverter_common import FloatTensorType
 
 from pandas import DataFrame
@@ -31,7 +37,8 @@ from typing import Tuple
 
 from sklearn2pmml import PMMLPipeline, sklearn2pmml
 
-from Common import read_performance_metrics_from_log_file, detect_response_time_outliers, remove_outliers_from
+from Common import read_performance_metrics_from_log_file, detect_response_time_outliers, remove_outliers_from, \
+    print_timing
 from CommonDb import read_all_performance_metrics_from_db, known_request_types
 
 plotTrainingData = False
@@ -55,51 +62,81 @@ def format_request_type(request_type_as_int, pos=None):
     return list(known_request_types.keys())[list(known_request_types.values()).index(request_type_as_int)]
 
 
+@print_timing
+def detect_and_remove_outliers_for_request_type(data: DataFrame, request_type: int) -> Tuple[DataFrame, int]:
+    filtered_data = data.query(f"`Request Type` == {request_type}")
+
+    # print(filtered_data)
+
+    outliers = detect_response_time_outliers(filtered_data)
+    print(f"Number of outliers for request type {request_type}: {len(outliers)}")
+    data_without_outliers = remove_outliers_from(data, outliers)
+
+    return data_without_outliers, len(outliers)
+
+
+@print_timing
 def extract_training_data(db_path: str, begin_end: Tuple[str, str] = ()):
     if plotTrainingData:
-        from plotly.subplots import make_subplots
-
         fig = make_subplots(rows=7, cols=1)
 
     training_data = read_all_performance_metrics_from_db(db_path, begin_end)
-    outliers = detect_response_time_outliers(training_data)
-    print("Number of outliers: ", len(outliers))
-    training_data = remove_outliers_from(training_data, outliers)
 
-    return training_data
+    different_request_types = training_data['Request Type'].unique()
+    training_data_without_outliers = training_data
+    number_of_outliers = 0
+    for request_type in different_request_types:
+        training_data_without_outliers, count_of_outliers = detect_and_remove_outliers_for_request_type(
+            training_data_without_outliers,
+            request_type
+        )
+        number_of_outliers += count_of_outliers
 
-    i = 1
+    print("Number of outliers: ", number_of_outliers)
+    return training_data_without_outliers
 
-    # logfiles = glob("data/Conv_2020-12-21.log")
-    # logfiles.extend(glob("data/Conv_2020-12-22.log"))
-    # logfiles.extend(glob("data/Conv_2020-12-23.log"))
-    # logfiles.extend(glob("data/Conv_2020-12-24.log"))
-    # logfiles.extend(glob("data/Conv_2020-12-25.log"))
-    # logfiles.extend(glob("data/Conv_2020-12-26.log"))
-    # logfiles.extend(glob("data/Conv_2020-12-27.log"))
+    # 01.11.2022: Outlier detection as been used in the case study presented at MASCOTS 2022
 
-    logfiles = glob("data/Conv_2020-12-28.log")
-    logfiles.extend(glob("data/Conv_2020-12-29.log"))
-    logfiles.extend(glob("data/Conv_2020-12-3*.log"))
-    logfiles.extend(glob("data/Conv_2021-01-*.log"))
+    # outliers = detect_response_time_outliers(training_data)
+    # print("Number of outliers: ", len(outliers))
+    # training_data = remove_outliers_from(training_data, outliers)
+    #
+    # return training_data
 
-    for logFile in sorted(logfiles):
-        data = read_performance_metrics_from_log_file(logFile)
-        # outliers = detect_response_time_outliers(data)
-        # print(outliers.head())
-        # print(data.describe())
-        # data = remove_outliers_from(data, outliers)
-        print(data)
-        training_data = training_data.append(data)
+    # The following used local files instead of a sqlite database
 
-        if plotTrainingData:
-            plotDataInSubplot(fig, data, i, logFile)
-
-        i += 1
-
-    if plotTrainingData:
-        fig.update_layout(title='Training Data')
-        fig.show()
+    # i = 1
+    #
+    # # logfiles = glob("data/Conv_2020-12-21.log")
+    # # logfiles.extend(glob("data/Conv_2020-12-22.log"))
+    # # logfiles.extend(glob("data/Conv_2020-12-23.log"))
+    # # logfiles.extend(glob("data/Conv_2020-12-24.log"))
+    # # logfiles.extend(glob("data/Conv_2020-12-25.log"))
+    # # logfiles.extend(glob("data/Conv_2020-12-26.log"))
+    # # logfiles.extend(glob("data/Conv_2020-12-27.log"))
+    #
+    # logfiles = glob("data/Conv_2020-12-28.log")
+    # logfiles.extend(glob("data/Conv_2020-12-29.log"))
+    # logfiles.extend(glob("data/Conv_2020-12-3*.log"))
+    # logfiles.extend(glob("data/Conv_2021-01-*.log"))
+    #
+    # for logFile in sorted(logfiles):
+    #     data = read_performance_metrics_from_log_file(logFile)
+    #     # outliers = detect_response_time_outliers(data)
+    #     # print(outliers.head())
+    #     # print(data.describe())
+    #     # data = remove_outliers_from(data, outliers)
+    #     print(data)
+    #     training_data = training_data.append(data)
+    #
+    #     if plotTrainingData:
+    #         plotDataInSubplot(fig, data, i, logFile)
+    #
+    #     i += 1
+    #
+    # if plotTrainingData:
+    #     fig.update_layout(title='Training Data')
+    #     fig.show()
 
 
 def plotDataInSubplot(fig, dataToPlot: DataFrame, row: int, name: str):
@@ -261,16 +298,20 @@ def main(
 
     # exit(1)
 
-    model = models[1][1]
+    target_model = models[0]
 
-    model.fit(X_train, y_train)
+    estimator_name = target_model[0]
+    estimator = target_model[1]
+
+    estimator.fit(X_train, y_train)
 
     pipeline = PMMLPipeline([
-        ("decisiontree", DecisionTreeRegressor())
+        # ("decisiontree", DecisionTreeRegressor())
+        ("linear", LinearRegression())
     ])
     pipeline.fit(X_train, y_train)
 
-    predictions = model.predict(X_test)
+    predictions = estimator.predict(X_test)
 
     # Evaluate predictions
     print("== X_test ==")
@@ -296,17 +337,25 @@ def main(
     print(f"Duration: {(datetime.now() - begin).total_seconds()} s")
     print(f"Resource usage of Python: {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1000000} MB")
 
-    dump(model, "predictive_model.joblib")
-    dump(known_request_types, "requests_mapping.joblib")
+    date_time = datetime.now().strftime("%d-%m-%Y_%H:%M:%S")
 
-    with open("requests_mapping.json", "w") as write_file:
+    results_path = Path(f"regression_analysis_results/{date_time}")
+    results_path.mkdir(parents=True, exist_ok=True)
+
+    predictive_model_filename = f"{results_path}/predictive_model_{estimator_name}_{date_time}"
+    requests_mapping_filename = f"{results_path}/requests_mapping_{date_time}"
+
+    dump(estimator, f"{predictive_model_filename}.joblib")
+    dump(known_request_types, f"{requests_mapping_filename}.joblib")
+
+    with open(f"{requests_mapping_filename}.json", "w") as write_file:
         json.dump(known_request_types, write_file)
 
-    sklearn2pmml(pipeline, "predictive_model.pmml", with_repr=True)
+    sklearn2pmml(pipeline, f"{predictive_model_filename}.pmml", with_repr=True)
 
     initial_type = [('float_input', FloatTensorType([None, 3]))]
-    onx = convert_sklearn(model, initial_types=initial_type, verbose=1)
-    with open("predictive_model.onnx", "wb") as f:
+    onx = convert_sklearn(estimator, initial_types=initial_type, verbose=1)
+    with open(f"{predictive_model_filename}.onnx", "wb") as f:
         f.write(onx.SerializeToString())
 
     exit(1)

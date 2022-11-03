@@ -1,12 +1,35 @@
 from datetime import datetime
 import re
+from functools import wraps
+from time import perf_counter
 
-from numpy import std, mean
+from numba import njit
+from numpy import std, mean, ndarray
 from pandas import DataFrame
 
 from CommonDb import create_connection, training_data_exists_in_db, SQLSelectExecutor, get_date_from_string
 
 known_request_types = {}
+
+
+def print_timing(func):
+    """
+    create a timing decorator function
+    use
+    @print_timing
+    just above the function you want to time
+
+    Source: https://www.daniweb.com/programming/software-development/code/486298/a-timing-decorator-python
+    """
+    @wraps(func)
+    def wrapper(*arg):
+        start = perf_counter()
+        result = func(*arg)
+        end = perf_counter()
+        fs = '{} took {:.6f} ms'
+        print(fs.format(func.__name__, (end - start)*1_000))
+        return result
+    return wrapper
 
 
 def read_data_line_from_log_file_optimized(path: str):
@@ -134,27 +157,53 @@ def read_performance_metrics_from_log_file(path: str):
     return df
 
 
-def detect_response_time_outliers(data: DataFrame, column_name="Response Time s"):
-    anomalies = []
-    response_times = data[column_name]
+@njit(parallel=True)
+def calculate_lower_upper_limits(data: ndarray):
 
     # Set upper and lower limit to 3 standard deviation
-    random_data_std = std(response_times)
-    random_data_mean = mean(response_times)
+    random_data_std = std(data)
+    random_data_mean = mean(data)
     anomaly_cut_off = random_data_std * 3
 
     lower_limit = random_data_mean - anomaly_cut_off
     upper_limit = random_data_mean + anomaly_cut_off
-    # print("Lower Limit {}, Upper Limit {}".format(lower_limit, upper_limit))
-    # Generate outliers
+
+    return lower_limit, upper_limit
+
+
+@njit
+def get_outlier_indexes(data_column: ndarray, lower_limit, upper_limit, data_index: ndarray):
+    anomalies = []
     outlier_index = 0
-    for outlier in response_times:
+    for outlier in data_column:
         if outlier > upper_limit or outlier < lower_limit:
-            anomalies.append((outlier_index, outlier))
+            index = data_index[outlier_index]
+            anomalies.append((index, outlier))
         outlier_index += 1
+
+    return anomalies
+
+
+@print_timing
+def detect_response_time_outliers(data: DataFrame, column_name="Response Time s"):
+    response_times: ndarray = data[column_name].values
+
+    start = perf_counter()
+    lower_limit, upper_limit = calculate_lower_upper_limits(response_times)
+    end = perf_counter()
+    print("Elapsed time calculate_lower_upper_limits: ", end - start)
+
+    # print("Lower Limit {}, Upper Limit {}".format(lower_limit, upper_limit))
+
+    # Get outliers
+    start = perf_counter()
+    anomalies = get_outlier_indexes(response_times, lower_limit, upper_limit, data.index.values)
+    end = perf_counter()
+    print("Elapsed time get_outlier_indexes: ", end - start)
 
     return DataFrame.from_records(anomalies, columns=['Index', 'Value'])
 
 
+@print_timing
 def remove_outliers_from(data: DataFrame, outliers: DataFrame):
     return data.drop(outliers['Index'])
