@@ -91,6 +91,8 @@ class ResultComparer:
                 print(f"No predictions for request type {request_type} available")
                 continue
 
+            print(f"Number of real times: {len(real_times_for_request_i)}")
+            print(f"Number of predicted times: {len(predicted_times_for_request_i)}")
             min_len = min(len(real_times_for_request_i), len(predicted_times_for_request_i))
 
             if len(predicted_times_for_request_i) > min_len:
@@ -102,7 +104,7 @@ class ResultComparer:
                 func(real_times_for_request_i, predicted_times_for_request_i, ReqType=i, figure=fig)
 
         fig.update_layout(title='Measured vs Predicted processing times in ms')
-        fig.show()
+        # fig.show()
 
     @staticmethod
     def similarity(real_times_for_request_i: DataFrame, predicted_times_for_request_i: DataFrame, **kwargs):
@@ -160,7 +162,7 @@ class ResultComparer:
               f"Predicted: {predicted_max_proc_time_of_request_i}")
 
         max_proc_time = max([real_max_proc_time_of_request_i * 1000, predicted_max_proc_time_of_request_i * 1000])
-        print(max_proc_time)
+        # print(max_proc_time)
 
         fig = kwargs['figure']
 
@@ -209,10 +211,10 @@ if __name__ == "__main__":
     # By comparing the two data sets we see how good our simulation
     # is able to predict the processing time of the TeaStore.
 
-    validationData = read_all_performance_metrics_from_db("TeaStoreResultComparisonData/trainingdata_2023-01-07_low_intensity.db")
+    validationData = read_all_performance_metrics_from_db("TeaStoreResultComparisonData/trainingdata_2023-01-17_low_intensity.db")
     validationData = validationData.loc[:, ['Request Type', 'Response Time s']]
 
-    predictionData = read_processing_times_from_teastoresimulation_log_file("TeaStoreResultComparisonData/teastore-cmd_simulation_2023-01-08_low_intensity.log")
+    predictionData = read_processing_times_from_teastoresimulation_log_file("TeaStoreResultComparisonData/Kotlin Sim/One correction/teastore-cmd_simulation_2023-01-17_low_intensity.log")
 
     ResultComparer.pipeline(
         validationData,
