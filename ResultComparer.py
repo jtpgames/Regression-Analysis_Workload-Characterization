@@ -118,6 +118,9 @@ class ResultComparer:
         real_times_for_request_i_list = real_times_for_request_i['Processing Time s'].tolist()
         predicted_times_for_request_i_list = predicted_times_for_request_i['Processing Time s'].tolist()
 
+        rmse = ResultComparer.normalized_root_mean_squared_error(real_times_for_request_i_list, predicted_times_for_request_i_list)
+        print(f"Root-Mean-Squared-Error: {rmse}")
+
         euclidean_distance = ResultComparer.l2_normalized_euclidean_distance(
             real_times_for_request_i_list,
             predicted_times_for_request_i_list
@@ -131,6 +134,15 @@ class ResultComparer:
             predicted_times_for_request_i_list
         )
         print(f"Cosine Similarity: {cosine_similarity}")
+
+        es = ResultComparer.nash_sutcliffe_score(
+            real_times_for_request_i_list,
+            predicted_times_for_request_i_list
+        )
+        print(f"ES: {es}")
+
+        r2score = ResultComparer.r2score(real_times_for_request_i_list, predicted_times_for_request_i_list)
+        print(f"R² score: {r2score}")
 
     @staticmethod
     def avg_min_max(real_times_for_request_i: DataFrame, predicted_times_for_request_i: DataFrame, **kwargs):
@@ -166,19 +178,28 @@ class ResultComparer:
 
         fig = kwargs['figure']
 
-        fig.add_trace(go.Scattergl(x=real_times_for_request_i.index,
-                                   y=real_times_for_request_i['Processing Time s'] * 1000,
-                                   name=f'Validation Data request {i}'),
+        fig.add_trace(go.Box(y=real_times_for_request_i['Processing Time s'] * 1000,
+                      name=f'Validation Data request {i}'),
                       row=i+1, col=1)
-        fig.add_hline((real_avg_proc_time_of_request_i * 1000), row=i+1, col=1)
-        fig.update_yaxes(range=[0, max_proc_time], row=i+1, col=1)
-
-        fig.add_trace(go.Scattergl(x=predicted_times_for_request_i.index,
-                                   y=predicted_times_for_request_i['Processing Time s'] * 1000,
-                                   name=f'Predictions request {i}'),
+        fig.update_yaxes(range=[0, 100], row=i+1, col=1)
+        fig.add_trace(go.Box(y=predicted_times_for_request_i['Processing Time s'] * 1000,
+                             name=f'Predictions Data request {i}'),
                       row=i+1, col=2)
-        fig.add_hline((predicted_avg_proc_time_of_request_i * 1000), row=i+1, col=2)
-        fig.update_yaxes(range=[0, max_proc_time], row=i+1, col=2)
+        fig.update_yaxes(range=[0, 100], row=i+1, col=2)
+
+        # fig.add_trace(go.Scattergl(x=real_times_for_request_i.index,
+        #                            y=real_times_for_request_i['Processing Time s'] * 1000,
+        #                            name=f'Validation Data request {i}'),
+        #               row=i+1, col=1)
+        # fig.add_hline((real_avg_proc_time_of_request_i * 1000), row=i+1, col=1)
+        # fig.update_yaxes(range=[0, max_proc_time], row=i+1, col=1)
+
+        # fig.add_trace(go.Scattergl(x=predicted_times_for_request_i.index,
+        #                            y=predicted_times_for_request_i['Processing Time s'] * 1000,
+        #                            name=f'Predictions request {i}'),
+        #               row=i+1, col=2)
+        # fig.add_hline((predicted_avg_proc_time_of_request_i * 1000), row=i+1, col=2)
+        # fig.update_yaxes(range=[0, max_proc_time], row=i+1, col=2)
 
     @staticmethod
     def l2_normalized_euclidean_distance(x: list, y: list):
@@ -191,7 +212,7 @@ class ResultComparer:
         x = x_vec.tolist()
         y = y_vec.tolist()
 
-        return sqrt(sum(pow(a-b, 2) for a, b in zip(x, y)))
+        return sqrt(sum((a-b) ** 2 for a, b in zip(x, y)))
 
     @staticmethod
     def cosine_similarity(x: list, y: list):
@@ -201,20 +222,59 @@ class ResultComparer:
         cosine = np.dot(x_vec, y_vec) / (norm(x_vec) * norm(y_vec))
         return cosine
 
+    @staticmethod
+    def r2score(measurements: list, predictions: list):
+        x_m = np.array(measurements)
+        x_c = np.array(predictions)
+
+        x_m = x_m / norm(x_m)
+        x_c = x_c / norm(x_c)
+
+        return r2_score(x_m, x_c)
+
+    @staticmethod
+    def normalized_root_mean_squared_error(measurements: list, predictions: list):
+        # sqrt(mean((xc(:)-xm(:)).^2));
+
+        x_m = np.array(measurements)
+        x_c = np.array(predictions)
+
+        x_m = x_m / norm(x_m)
+        x_c = x_c / norm(x_c)
+
+        # nrmse = mean_squared_error(x_m, x_c, squared=False)
+
+        nrmse = np.sqrt(np.mean((x_c - x_m) ** 2))
+        return nrmse
+
+    @staticmethod
+    def nash_sutcliffe_score(measurements: list, predictions: list):
+        # ES = 1 - mean((xc(:)-xm(:)).^2)/mean((xm(:)-mean(xm(:))).^2);
+
+        x_m = np.array(measurements)
+        x_c = np.array(predictions)
+
+        x_m = x_m / norm(x_m)
+        x_c = x_c / norm(x_c)
+
+        denominator = np.mean((x_m - np.mean(x_m)) ** 2)
+        numerator = np.mean((x_m - x_c) ** 2)
+        nse_val = 1 - (numerator / denominator)
+        return nse_val
+
 
 if __name__ == "__main__":
     # in the following, we compare a simulation of the TeaStore.
     # ValidationData contains the processing times of the TeaStore.
     # The processing times were generated with a Locust Test.
-    # After performing a regression analysis, we imported the model in the simulation and executed the same Locust Test.
-    # PredictionData contains the respective processing times.
+    # PredictionData contains the processing times of the simulation.
     # By comparing the two data sets we see how good our simulation
     # is able to predict the processing time of the TeaStore.
 
-    validationData = read_all_performance_metrics_from_db("TeaStoreResultComparisonData/trainingdata_2023-01-17_low_intensity.db")
+    validationData = read_all_performance_metrics_from_db("TeaStoreResultComparisonData/trainingdata_2023-02-25_low-intensity.db")
     validationData = validationData.loc[:, ['Request Type', 'Response Time s']]
 
-    predictionData = read_processing_times_from_teastoresimulation_log_file("TeaStoreResultComparisonData/Kotlin Sim/One correction/teastore-cmd_simulation_2023-01-17_low_intensity.log")
+    predictionData = read_processing_times_from_teastoresimulation_log_file("TeaStoreResultComparisonData/Kotlin Sim/One correction/teastore-cmd_simulation_2023-02-25_low_intensity.log")
 
     ResultComparer.pipeline(
         validationData,
