@@ -17,7 +17,7 @@ def main(
             help="Path to the predictive model *.joblib file to load"
         ),
         mapping_path: str = typer.Argument(
-            ...,
+            None,
             help="Path to the requests mapping *.joblib file to load"
         )
 ):
@@ -32,22 +32,25 @@ def main(
     if path_obj.suffix != ".joblib":
         typer.echo(f"Error: The given file path {path_obj} does not have the expected '.joblib' suffix.")
         raise typer.Exit()
-    path_obj = Path(mapping_path)
-    if path_obj.suffix != ".joblib":
-        typer.echo(f"Error: The given file path {path_obj} does not have the expected '.joblib' suffix.")
-        raise typer.Exit()
 
-    predictive_model: DecisionTreeRegressor = load(model_path)
-    known_request_types = load(mapping_path)
+    if mapping_path is not None:
+        path_obj = Path(mapping_path)
+        if path_obj.suffix != ".joblib":
+            typer.echo(f"Error: The given file path {path_obj} does not have the expected '.joblib' suffix.")
+            raise typer.Exit()
+
+        known_request_types = load(mapping_path)
+        requests_mapping_filename = Path(mapping_path).with_suffix("")
+
+        with open(f"{requests_mapping_filename}.json", "w") as write_file:
+            json.dump(known_request_types, write_file)
+
+    predictive_model: BaseEstimator = load(model_path)
 
     print(predictive_model.feature_names_in_)
     print(predictive_model.get_params())
 
     predictive_model_filename = Path(model_path).with_suffix("")
-    requests_mapping_filename = Path(mapping_path).with_suffix("")
-
-    with open(f"{requests_mapping_filename}.json", "w") as write_file:
-        json.dump(known_request_types, write_file)
 
     sklearn2pmml(
         make_pmml_pipeline(
