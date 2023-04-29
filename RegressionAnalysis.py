@@ -94,6 +94,15 @@ def extract_training_data(db_path: str, begin_end: Tuple[str, str] = ()):
         number_of_outliers += count_of_outliers
 
     print("Number of outliers: ", number_of_outliers)
+
+    count = (training_data_without_outliers['Response Time s'] == 0).sum()
+    # perform zero removal, i.e., drop all rows with a response time of zero
+    training_data_without_outliers.drop(
+        training_data_without_outliers[training_data_without_outliers['Response Time s'] == 0].index,
+        inplace=True
+    )
+    print("Number of zero value removed: ", count)
+
     return training_data_without_outliers
 
     # 01.11.2022: Outlier detection as been used in the case study presented at MASCOTS 2022
@@ -251,14 +260,21 @@ def main(
     # X_test = orig_X_test.iloc[:, [0, 1, 2, 4, 5, 6]]
 
     # take a subset of X's columns (only PR 1, PR 3, Request Type, CPU load)
+    # to see how much the CPU load impacts the predictions
     # X_train = orig_X_train.iloc[:, [2, 4, 5, 6]]
     # X_test = orig_X_test.iloc[:, [2, 4, 5, 6]]
 
+    # take a subset of X's columns (only PR 1, Request Type)
+    # X_train = orig_X_train.iloc[:, [2, 5]]
+    # X_test = orig_X_test.iloc[:, [2, 5]]
+
     # take a subset of X's columns (only PR 1, PR 3, Request Type)
-    # to see how much the CPU load impacts the predictions
-    X_train = orig_X_train.iloc[:, [2, 4, 5, 7, 8]]
-    X_test = orig_X_test.iloc[:, [2, 4, 5, 7, 8]]
-    X_crossval = X.iloc[:, [2, 4, 5]]
+    # X_train = orig_X_train.iloc[:, [2, 4, 5]]
+    # X_test = orig_X_test.iloc[:, [2, 4, 5]]
+
+    # take a subset of X's columns (only PR 1, Request Type, RPS, RPM)
+    X_train = orig_X_train.iloc[:, [2, 5, 7, 8]]
+    X_test = orig_X_test.iloc[:, [2, 5, 7, 8]]
 
     # or take all columns.
     # X_train = orig_X_train
