@@ -33,9 +33,10 @@ from sklearn.neighbors import KNeighborsRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeRegressor
+from sklearn.base import BaseEstimator
 from typing import Tuple
 
-from sklearn2pmml import PMMLPipeline, sklearn2pmml
+from sklearn2pmml import sklearn2pmml, make_pmml_pipeline
 
 from Common import read_performance_metrics_from_log_file, detect_response_time_outliers, remove_outliers_from, \
     print_timing
@@ -255,8 +256,8 @@ def main(
 
     # take a subset of X's columns (only PR 1, PR 3, Request Type)
     # to see how much the CPU load impacts the predictions
-    X_train = orig_X_train.iloc[:, [2, 4, 5]]
-    X_test = orig_X_test.iloc[:, [2, 4, 5]]
+    X_train = orig_X_train.iloc[:, [2, 4, 5, 7, 8]]
+    X_test = orig_X_test.iloc[:, [2, 4, 5, 7, 8]]
     X_crossval = X.iloc[:, [2, 4, 5]]
 
     # or take all columns.
@@ -299,18 +300,12 @@ def main(
 
     # exit(1)
 
-    target_model = estimators[0]
+    target_model: tuple[str, BaseEstimator] = estimators[0]
 
     estimator_name = target_model[0]
     estimator = target_model[1]
 
     estimator.fit(X_train, y_train)
-
-    pipeline = PMMLPipeline([
-        # ("decisiontree", DecisionTreeRegressor())
-        ("linear", LinearRegression())
-    ])
-    pipeline.fit(X_train, y_train)
 
     predictions = estimator.predict(X_test)
 
@@ -352,7 +347,15 @@ def main(
     with open(f"{requests_mapping_filename}.json", "w") as write_file:
         json.dump(known_request_types, write_file)
 
-    sklearn2pmml(pipeline, f"{predictive_model_filename}.pmml", with_repr=True)
+    sklearn2pmml(
+        make_pmml_pipeline(
+            estimator,
+            estimator.feature_names_in_,
+            "Response Time s"
+        ),
+        f"{predictive_model_filename}.pmml",
+        with_repr=True
+    )
 
     initial_type = [('float_input', FloatTensorType([None, 3]))]
     onx = convert_sklearn(estimator, initial_types=initial_type, verbose=1)

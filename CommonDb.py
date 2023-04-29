@@ -6,9 +6,9 @@ from sqlite3 import Connection, Error, Cursor
 from pandas import DataFrame
 from typing import Tuple
 
-
-def get_date_from_string(line):
-    return re.search(r"\d*-\d*-\d*", line).group().strip()
+from StringUtils import get_date_from_string
+from TrainingDatabase import read_all_training_data_from_db_using_sqlalchemy, \
+    read_training_data_from_db_between_using_sqlalchemy
 
 
 class TrainingDataRow:
@@ -258,9 +258,11 @@ def read_all_performance_metrics_from_db(db_path: str, begin_end: Tuple[str, str
     begin = datetime.now()
 
     if len(begin_end) > 0:
-        training_data = read_training_data_from_db_between(db_path, begin_end[0], begin_end[1])
+        # training_data = read_training_data_from_db_between(db_path, begin_end[0], begin_end[1])
+        training_data = read_training_data_from_db_between_using_sqlalchemy(db_path, begin_end[0], begin_end[1])
     else:
-        training_data = read_all_training_data_from_db(db_path)
+        # training_data = read_all_training_data_from_db(db_path)
+        training_data = read_all_training_data_from_db_using_sqlalchemy(db_path)
 
     def gen_rows():
         for row in training_data:
@@ -291,6 +293,8 @@ def read_all_performance_metrics_from_db(db_path: str, begin_end: Tuple[str, str
                 row.number_of_parallel_requests_finished,
                 request_type_as_int,
                 float(row.system_cpu_usage),
+                row.requests_per_second,
+                row.requests_per_minute,
                 float(row.request_execution_time_ms) / 1000,
             )
 
@@ -306,6 +310,8 @@ def read_all_performance_metrics_from_db(db_path: str, begin_end: Tuple[str, str
             'PR 3',
             'Request Type',
             'CPU (System)',
+            'RPS',
+            'RPM',
             'Response Time s'
         ]
     )

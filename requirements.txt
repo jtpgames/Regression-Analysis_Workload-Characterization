@@ -9,3 +9,4 @@ skl2onnx==1.11.2
 matplotlib~=3.5.1
 joblib~=1.1.0
 typer~=0.4.1
+SQLAlchemy~=2.0.11
