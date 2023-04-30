@@ -252,29 +252,33 @@ def main(
     )
 
     # take a subset of X's columns (omit timestamp and weekday)
-    # X_train = orig_X_train.iloc[:, 2:7]
-    # X_test = orig_X_test.iloc[:, 2:7]
+    # X_train = orig_X_train.iloc[:, 2:9]
+    # X_test = orig_X_test.iloc[:, 2:9]
 
     # take a subset of X's columns (omit PR 2)
     # X_train = orig_X_train.iloc[:, [0, 1, 2, 4, 5, 6]]
     # X_test = orig_X_test.iloc[:, [0, 1, 2, 4, 5, 6]]
 
-    # take a subset of X's columns (only PR 1, PR 3, Request Type, CPU load)
+    # take a subset of X's columns (PR 1, PR 3, Request Type, CPU load)
     # to see how much the CPU load impacts the predictions
     # X_train = orig_X_train.iloc[:, [2, 4, 5, 6]]
     # X_test = orig_X_test.iloc[:, [2, 4, 5, 6]]
 
-    # take a subset of X's columns (only PR 1, Request Type)
+    # take a subset of X's columns (PR 1, Request Type)
     # X_train = orig_X_train.iloc[:, [2, 5]]
     # X_test = orig_X_test.iloc[:, [2, 5]]
 
-    # take a subset of X's columns (only PR 1, PR 3, Request Type)
+    # take a subset of X's columns (PR 1, PR 3, Request Type)
     # X_train = orig_X_train.iloc[:, [2, 4, 5]]
     # X_test = orig_X_test.iloc[:, [2, 4, 5]]
 
-    # take a subset of X's columns (only PR 1, Request Type, RPS, RPM)
-    X_train = orig_X_train.iloc[:, [2, 5, 7, 8]]
-    X_test = orig_X_test.iloc[:, [2, 5, 7, 8]]
+    # take a subset of X's columns (PR 1, Request Type, RPS, RPM)
+    # X_train = orig_X_train.iloc[:, [2, 5, 7, 8]]
+    # X_test = orig_X_test.iloc[:, [2, 5, 7, 8]]
+
+    # take a subset of X's columns (PR 1, PR3, Request Type, RPS, RPM)
+    X_train = orig_X_train.iloc[:, [2, 4, 5, 7, 8]]
+    X_test = orig_X_test.iloc[:, [2, 4, 5, 7, 8]]
 
     # or take all columns.
     # X_train = orig_X_train
@@ -333,6 +337,22 @@ def main(
     print("== y_test ==")
     print(y_test)
     print("====")
+
+    X = numpy.reshape(
+        [10000,
+         10000,
+         3,
+         100,
+         2000],
+        (1, -1)
+    )
+
+    Xframe = DataFrame(X, columns=['PR 1', 'PR 3', 'Request Type', 'RPS', 'RPM'])
+
+    max_prediction = estimator.predict(Xframe)
+
+    print("Prediction with \n", Xframe)
+    print(max_prediction)
 
     # The coefficients
     # print("Model Coefficients: ", model.coef_)
