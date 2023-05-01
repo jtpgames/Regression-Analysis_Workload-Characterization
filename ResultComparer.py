@@ -81,7 +81,7 @@ class ResultComparer:
             request_type = get_request_type_of_int_value(i)
 
             print("")
-            print(f"Request Type {request_type}")
+            print(f"Request Type {request_type}({i})")
             print("==============")
 
             predicted_times_for_request_i = prediction.query(f"ReqType == {i}")
@@ -109,7 +109,7 @@ class ResultComparer:
     @staticmethod
     def similarity(real_times_for_request_i: DataFrame, predicted_times_for_request_i: DataFrame, **kwargs):
         """
-        Similarity is determined by calculating the euclidean distance and the cosine similarity between the processing times
+        Similarity is determined by calculating the Euclidean distance and the cosine similarity between the processing times
         in the validation and the prediction data frames.
         :param predicted_times_for_request_i:
         :param real_times_for_request_i:
@@ -203,24 +203,33 @@ class ResultComparer:
 
     @staticmethod
     def l2_normalized_euclidean_distance(x: list, y: list):
+        # Convert lists to arrays
         x_vec = np.array(x)
         y_vec = np.array(y)
 
-        x_vec = x_vec / norm(x_vec)
-        y_vec = y_vec / norm(y_vec)
+        # Normalize vectors
+        x_normalized = x_vec / norm(x_vec)
+        y_normalized = y_vec / norm(y_vec)
 
-        x = x_vec.tolist()
-        y = y_vec.tolist()
+        # Compute L2-normalized Euclidean distance
+        distance = sqrt(np.sum(np.square(x_normalized - y_normalized)))
 
-        return sqrt(sum((a-b) ** 2 for a, b in zip(x, y)))
+        return distance
 
     @staticmethod
     def cosine_similarity(x: list, y: list):
-        x_vec = np.array(x)
-        y_vec = np.array(y)
+        dot_product = np.dot(x, y)
+        norm_x = norm(x)
+        norm_y = norm(y)
+        similarity = dot_product / (norm_x * norm_y)
 
-        cosine = np.dot(x_vec, y_vec) / (norm(x_vec) * norm(y_vec))
-        return cosine
+        return similarity
+
+        # x_vec = np.array(x)
+        # y_vec = np.array(y)
+        #
+        # cosine = np.dot(x_vec, y_vec) / (norm(x_vec) * norm(y_vec))
+        # return cosine
 
     @staticmethod
     def r2score(measurements: list, predictions: list):
@@ -271,10 +280,10 @@ if __name__ == "__main__":
     # By comparing the two data sets we see how good our simulation
     # is able to predict the processing time of the TeaStore.
 
-    validationData = read_all_performance_metrics_from_db("TeaStoreResultComparisonData/trainingdata_2023-02-25_low-intensity.db")
+    validationData = read_all_performance_metrics_from_db("TeaStoreResultComparisonData/trainingdata_2023-04-30_low-intensity.db")
     validationData = validationData.loc[:, ['Request Type', 'Response Time s']]
 
-    predictionData = read_processing_times_from_teastoresimulation_log_file("TeaStoreResultComparisonData/Kotlin Sim/One correction/teastore-cmd_simulation_2023-02-25_low_intensity.log")
+    predictionData = read_processing_times_from_teastoresimulation_log_file("TeaStoreResultComparisonData/Kotlin Sim/One correction/teastore_simulation_2023-04-30_low-intensity.log")
 
     ResultComparer.pipeline(
         validationData,
