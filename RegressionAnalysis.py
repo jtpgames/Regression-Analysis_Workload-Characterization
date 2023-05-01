@@ -28,7 +28,7 @@ from sklearn.ensemble import VotingRegressor, GradientBoostingRegressor, RandomF
 from sklearn.isotonic import IsotonicRegression
 from sklearn.linear_model import LinearRegression, Ridge, ElasticNet, Lasso, SGDRegressor
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
-from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import StandardScaler
@@ -273,12 +273,12 @@ def main(
     # X_test = orig_X_test.iloc[:, [2, 4, 5]]
 
     # take a subset of X's columns (PR 1, Request Type, RPS, RPM)
-    # X_train = orig_X_train.iloc[:, [2, 5, 7, 8]]
-    # X_test = orig_X_test.iloc[:, [2, 5, 7, 8]]
+    X_train = orig_X_train.iloc[:, [2, 5, 7, 8]]
+    X_test = orig_X_test.iloc[:, [2, 5, 7, 8]]
 
     # take a subset of X's columns (PR 1, PR3, Request Type, RPS, RPM)
-    X_train = orig_X_train.iloc[:, [2, 4, 5, 7, 8]]
-    X_test = orig_X_test.iloc[:, [2, 4, 5, 7, 8]]
+    # X_train = orig_X_train.iloc[:, [2, 4, 5, 7, 8]]
+    # X_test = orig_X_test.iloc[:, [2, 4, 5, 7, 8]]
 
     # or take all columns.
     # X_train = orig_X_train
@@ -297,8 +297,8 @@ def main(
     print("====")
 
     estimators = []
-    estimators.append(('LR', LinearRegression()))
-    # estimators.append(('Ridge', Ridge()))
+    # estimators.append(('LR', LinearRegression()))
+    estimators.append(('Ridge', Ridge()))
     # estimators.append(('Lasso', Lasso()))
     # estimators.append(('ElasticNet', ElasticNet()))
     estimators.append(('DT', DecisionTreeRegressor()))
@@ -325,7 +325,18 @@ def main(
     estimator_name = target_model[0]
     estimator = target_model[1]
 
+    estimator = GridSearchCV(estimator,
+                             {'alpha': [0.0001*(10**n) for n in range(1, 7)],
+                              'fit_intercept': [True, False],
+                              'max_iter': [100, 1000, 2000],
+                              'solver': ['auto']
+                              },
+                             verbose=4)
+    # estimator = GridSearchCV(estimator, {'max_depth': [2, 4, 6, 8, 10]}, verbose=3)
+    # estimator = GridSearchCV(estimator, {'alpha': [0.0001, 0.001, 0.1, 1], 'l1_ratio': [0.1, 0.15, 0.2]}, verbose=3)
+
     estimator.fit(X_train, y_train)
+    print(estimator.cv_results_)
 
     predictions = estimator.predict(X_test)
 
@@ -340,14 +351,13 @@ def main(
 
     X = numpy.reshape(
         [10000,
-         10000,
          3,
          100,
          2000],
         (1, -1)
     )
 
-    Xframe = DataFrame(X, columns=['PR 1', 'PR 3', 'Request Type', 'RPS', 'RPM'])
+    Xframe = DataFrame(X, columns=['PR 1', 'Request Type', 'RPS', 'RPM'])
 
     max_prediction = estimator.predict(Xframe)
 
