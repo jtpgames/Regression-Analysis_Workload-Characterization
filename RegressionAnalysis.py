@@ -331,12 +331,17 @@ def main(
                               'max_iter': [100, 1000, 2000],
                               'solver': ['auto']
                               },
-                             verbose=4)
-    # estimator = GridSearchCV(estimator, {'max_depth': [2, 4, 6, 8, 10]}, verbose=3)
+                             verbose=3)
+    # estimator = GridSearchCV(estimator,
+    #                          {
+    #                              'max_depth': [8, 10, 12, 14],
+    #                              'criterion': ["squared_error", "friedman_mse"]
+    #                          },
+    #                          verbose=3)
     # estimator = GridSearchCV(estimator, {'alpha': [0.0001, 0.001, 0.1, 1], 'l1_ratio': [0.1, 0.15, 0.2]}, verbose=3)
 
     estimator.fit(X_train, y_train)
-    print(estimator.cv_results_)
+    # print(estimator.cv_results_)
 
     predictions = estimator.predict(X_test)
 
@@ -349,20 +354,25 @@ def main(
     print(y_test)
     print("====")
 
-    X = numpy.reshape(
-        [10000,
-         3,
-         100,
-         2000],
-        (1, -1)
-    )
-
-    Xframe = DataFrame(X, columns=['PR 1', 'Request Type', 'RPS', 'RPM'])
-
-    max_prediction = estimator.predict(Xframe)
-
-    print("Prediction with \n", Xframe)
-    print(max_prediction)
+    # X = numpy.reshape(
+    #     [10000,
+    #      10000,
+    #      3,
+    #      10000,
+    #      20000],
+    #     (1, -1)
+    # )
+    #
+    # Xframe = DataFrame(X, columns=['PR 1',
+    #                                'PR 3',
+    #                                'Request Type',
+    #                                'RPS',
+    #                                'RPM'])
+    #
+    # max_prediction = estimator.predict(Xframe)
+    #
+    # print("Prediction with \n", Xframe)
+    # print(max_prediction)
 
     # The coefficients
     # print("Model Coefficients: ", model.coef_)
