@@ -1,3 +1,6 @@
+import glob
+import os
+from dataclasses import dataclass
 from math import sqrt
 
 import numpy as np
@@ -16,22 +19,60 @@ from Common import read_performance_metrics_from_log_file, detect_response_time_
 from CommonDb import read_all_performance_metrics_from_db, known_request_types
 
 
-def read_processing_times_from_teastoresimulation_log_file(path: str) -> DataFrame:
+class SimilarityScoresCollector:
+    _similarity_scores = []
+
+    @staticmethod
+    def add_cosine_similarity(intensity: str, model: str, corrections: str, request_type: str, similarity: float):
+        SimilarityScoresCollector._similarity_scores.append(
+            {
+                'Intensity': intensity,
+                'Model': model,
+                'Corrections': corrections,
+                'Request Type': request_type,
+                'Cosine Similarity': similarity
+            }
+        )
+
+    @staticmethod
+    def write_to_csv(path: str = "similarity_scores.csv"):
+        # Open the CSV file for writing
+        with open(path, 'w', newline='') as csvfile:
+            # Create a CSV writer object
+            import csv
+            writer = csv.DictWriter(csvfile, fieldnames=['Intensity', 'Model', 'Corrections', 'Request Type', 'Cosine Similarity'])
+
+            # Write the header row
+            writer.writeheader()
+
+            # Write the data rows
+            for row in SimilarityScoresCollector._similarity_scores:
+                writer.writerow(row)
+
+
+def read_processing_times_from_teastoresimulation_log_file(path: str, use_predicted_times=True) -> DataFrame:
     processing_times = []
 
     print(known_request_types)
 
     with open(path) as logfile:
         for line in logfile:
-            if 'Processing Time' not in line:
-                continue
+            if use_predicted_times:
+                if 'Pred. Processing Time' not in line:
+                    continue
+            else:
+                if 'Processing Time' not in line or 'Pred. Processing Time' in line:
+                    continue
 
             # Extract:
             # * Request Type
             # * Processing Time
 
             request_type = re.search(r"ID_\w+", line).group()
-            processing_time = re.search(r"(?<=Processing Time:\s)\d*.\d*", line).group()
+            if use_predicted_times:
+                processing_time = re.search(r"(?<=Pred\. Processing Time:\s)\d*.\d*", line).group()
+            else:
+                processing_time = re.search(r"(?<=Processing Time:\s)\d*.\d*", line).group()
 
             request_type_as_int = known_request_types[request_type]
 
@@ -58,9 +99,16 @@ def get_request_type_of_int_value(request_type_as_int: int) -> str:
     return "!!Unknown!!"
 
 
+@dataclass
+class DataInfo:
+    Intensity: str
+    Model: str
+    Corrections: str
+
+
 class ResultComparer:
     @staticmethod
-    def pipeline(validation: DataFrame, prediction: DataFrame, *args):
+    def pipeline(validation: DataFrame, prediction: DataFrame, info: DataInfo, *args):
         """
 
         A comparison function has to satisfy the following signature:
@@ -68,6 +116,7 @@ class ResultComparer:
 
         :param validation:
         :param prediction:
+        :param info: information regarding the measured data
         :param args: A variable number of comparison functions.
         :return:
         """
@@ -101,7 +150,14 @@ class ResultComparer:
                 real_times_for_request_i = real_times_for_request_i[:min_len]
 
             for func in args:
-                func(real_times_for_request_i, predicted_times_for_request_i, ReqType=i, figure=fig)
+                func(
+                    real_times_for_request_i,
+                    predicted_times_for_request_i,
+                    ReqType=i,
+                    ReqTypeStr=request_type,
+                    figure=fig,
+                    info=info
+                )
 
         fig.update_layout(title='Measured vs Predicted processing times in ms')
         # fig.show()
@@ -118,8 +174,8 @@ class ResultComparer:
         real_times_for_request_i_list = real_times_for_request_i['Processing Time s'].tolist()
         predicted_times_for_request_i_list = predicted_times_for_request_i['Processing Time s'].tolist()
 
-        rmse = ResultComparer.normalized_root_mean_squared_error(real_times_for_request_i_list, predicted_times_for_request_i_list)
-        print(f"Root-Mean-Squared-Error: {rmse}")
+        # rmse = ResultComparer.normalized_root_mean_squared_error(real_times_for_request_i_list, predicted_times_for_request_i_list)
+        # print(f"Root-Mean-Squared-Error: {rmse}")
 
         euclidean_distance = ResultComparer.l2_normalized_euclidean_distance(
             real_times_for_request_i_list,
@@ -135,14 +191,25 @@ class ResultComparer:
         )
         print(f"Cosine Similarity: {cosine_similarity}")
 
-        es = ResultComparer.nash_sutcliffe_score(
-            real_times_for_request_i_list,
-            predicted_times_for_request_i_list
-        )
-        print(f"ES: {es}")
+        request_type: str = kwargs['ReqTypeStr']
+        data_info: DataInfo = kwargs['info']
 
-        r2score = ResultComparer.r2score(real_times_for_request_i_list, predicted_times_for_request_i_list)
-        print(f"R² score: {r2score}")
+        SimilarityScoresCollector.add_cosine_similarity(
+            data_info.Intensity,
+            data_info.Model,
+            data_info.Corrections,
+            request_type,
+            cosine_similarity
+        )
+
+        # es = ResultComparer.nash_sutcliffe_score(
+        #     real_times_for_request_i_list,
+        #     predicted_times_for_request_i_list
+        # )
+        # print(f"ES: {es}")
+        #
+        # r2score = ResultComparer.r2score(real_times_for_request_i_list, predicted_times_for_request_i_list)
+        # print(f"R² score: {r2score}")
 
     @staticmethod
     def avg_min_max(real_times_for_request_i: DataFrame, predicted_times_for_request_i: DataFrame, **kwargs):
@@ -280,14 +347,40 @@ if __name__ == "__main__":
     # By comparing the two data sets we see how good our simulation
     # is able to predict the processing time of the TeaStore.
 
-    validationData = read_all_performance_metrics_from_db("TeaStoreResultComparisonData/trainingdata_2023-04-30_low-intensity.db")
-    validationData = validationData.loc[:, ['Request Type', 'Response Time s']]
+    intensities = ['low', 'low2', 'med', 'high']
+    for intensity in intensities:
+        validationData = read_all_performance_metrics_from_db(f"TeaStoreResultComparisonData/trainingdata_2023-05-04_{intensity}-intensity.db")
+        validationData = validationData.loc[:, ['Request Type', 'Response Time s']]
 
-    predictionData = read_processing_times_from_teastoresimulation_log_file("TeaStoreResultComparisonData/Kotlin Sim/One correction/teastore_simulation_2023-04-30_low-intensity.log")
+        for filename in glob.iglob(os.path.join("TeaStoreResultComparisonData", '**', '*.log'), recursive=True):
+            if f"_{intensity}-" not in filename:
+                continue
 
-    ResultComparer.pipeline(
-        validationData,
-        predictionData,
-        ResultComparer.avg_min_max,
-        ResultComparer.similarity
-    )
+            print(filename)
+
+            # Extract the directory path and file name from the full path
+            parent_dir_name = os.path.dirname(filename)
+            model_dir_name = os.path.dirname(parent_dir_name)
+            file_name = os.path.basename(filename)
+
+            # Get the directory name
+            corrections_directory_name = os.path.basename(parent_dir_name)
+            model_dir_name = os.path.basename(model_dir_name)
+
+            # Print the directory name and file name
+            print(f"Full Directory path: {parent_dir_name}")
+            print(f"Corrections Directory name: {corrections_directory_name}")
+            print(f"Model Directory name: {model_dir_name}")
+            print(f"File name: {file_name}")
+
+            predictionData = read_processing_times_from_teastoresimulation_log_file(filename)
+
+            ResultComparer.pipeline(
+                validationData,
+                predictionData,
+                DataInfo(intensity, model_dir_name, corrections_directory_name),
+                ResultComparer.avg_min_max,
+                ResultComparer.similarity
+            )
+
+    SimilarityScoresCollector.write_to_csv("similarity_scores.csv")
