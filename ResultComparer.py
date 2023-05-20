@@ -121,12 +121,10 @@ class ResultComparer:
         :return:
         """
 
-        validation = validation.rename(columns={'Response Time s': 'Processing Time s', 'Request Type': "ReqType"})
-        prediction = prediction.rename(columns={'Request Type': "ReqType"})
-
         fig = make_subplots(rows=10, cols=2)
 
-        for i in range(0, 10):
+        # for i in range(0, 10):
+        for i in [2, 3, 4, 5, 7]:
             request_type = get_request_type_of_int_value(i)
 
             print("")
@@ -140,9 +138,15 @@ class ResultComparer:
                 print(f"No predictions for request type {request_type} available")
                 continue
 
-            print(f"Number of real times: {len(real_times_for_request_i)}")
-            print(f"Number of predicted times: {len(predicted_times_for_request_i)}")
-            min_len = min(len(real_times_for_request_i), len(predicted_times_for_request_i))
+            number_of_real_times = len(real_times_for_request_i)
+            number_of_predicted_times = len(predicted_times_for_request_i)
+            print(f"Number of real times: {number_of_real_times}")
+            print(f"Number of predicted times: {number_of_predicted_times}")
+
+            if number_of_real_times != number_of_predicted_times:
+                print(f"WARNING: {number_of_real_times} != {number_of_predicted_times} for {info}")
+
+            min_len = min(number_of_real_times, number_of_predicted_times)
 
             if len(predicted_times_for_request_i) > min_len:
                 predicted_times_for_request_i = predicted_times_for_request_i[:min_len]
@@ -349,8 +353,9 @@ if __name__ == "__main__":
 
     intensities = ['low', 'low2', 'med', 'high']
     for intensity in intensities:
-        validationData = read_all_performance_metrics_from_db(f"TeaStoreResultComparisonData/trainingdata_2023-05-04_{intensity}-intensity.db")
+        validationData = read_all_performance_metrics_from_db(f"TeaStoreResultComparisonData/validationdata_{intensity}-intensity.db")
         validationData = validationData.loc[:, ['Request Type', 'Response Time s']]
+        validationData.rename(columns={'Response Time s': 'Processing Time s', 'Request Type': "ReqType"}, inplace=True)
 
         for filename in glob.iglob(os.path.join("TeaStoreResultComparisonData", '**', '*.log'), recursive=True):
             if f"_{intensity}-" not in filename:
@@ -374,6 +379,7 @@ if __name__ == "__main__":
             print(f"File name: {file_name}")
 
             predictionData = read_processing_times_from_teastoresimulation_log_file(filename)
+            predictionData.rename(columns={'Request Type': "ReqType"}, inplace=True)
 
             ResultComparer.pipeline(
                 validationData,
