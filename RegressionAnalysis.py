@@ -276,7 +276,7 @@ def main(
     X_train = orig_X_train.iloc[:, [2, 5, 7, 8]]
     X_test = orig_X_test.iloc[:, [2, 5, 7, 8]]
 
-    # take a subset of X's columns (PR 1, PR3, Request Type, RPS, RPM)
+    # take a subset of X's columns (PR 1, PR 3, Request Type, RPS, RPM)
     # X_train = orig_X_train.iloc[:, [2, 4, 5, 7, 8]]
     # X_test = orig_X_test.iloc[:, [2, 4, 5, 7, 8]]
 
@@ -325,19 +325,21 @@ def main(
     estimator_name = target_model[0]
     estimator = target_model[1]
 
-    estimator = GridSearchCV(estimator,
-                             {'alpha': [0.0001*(10**n) for n in range(1, 7)],
-                              'fit_intercept': [True, False],
-                              'max_iter': [100, 1000, 2000],
-                              'solver': ['auto']
-                              },
-                             verbose=3)
-    # estimator = GridSearchCV(estimator,
-    #                          {
-    #                              'max_depth': [8, 10, 12, 14],
-    #                              'criterion': ["squared_error", "friedman_mse"]
-    #                          },
-    #                          verbose=3)
+    if estimator_name == "LR":
+        estimator = GridSearchCV(estimator,
+                                 {'alpha': [0.0001*(10**n) for n in range(1, 7)],
+                                  'fit_intercept': [True, False],
+                                  'max_iter': [100, 1000, 2000],
+                                  'solver': ['auto']
+                                  },
+                                 verbose=3)
+    elif estimator_name == "DT":
+        estimator = GridSearchCV(estimator,
+                                 {
+                                     'max_depth': [8, 10, 12, 14],
+                                     'criterion': ["squared_error", "friedman_mse"]
+                                 },
+                                 verbose=3)
     # estimator = GridSearchCV(estimator, {'alpha': [0.0001, 0.001, 0.1, 1], 'l1_ratio': [0.1, 0.15, 0.2]}, verbose=3)
 
     estimator.fit(X_train, y_train)
@@ -383,15 +385,16 @@ def main(
     print('Mean squared error: %.2f'
           % mean_squared_error(y_test, predictions))
     # The coefficient of determination: 1 is perfect prediction
+    score = r2_score(y_test, predictions)
     print('Coefficient of determination: %.2f'
-          % r2_score(y_test, predictions))
+          % score)
 
     print(f"Duration: {(datetime.now() - begin).total_seconds()} s")
     print(f"Resource usage of Python: {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1000000} MB")
 
     date_time = datetime.now().strftime("%d-%m-%Y_%H:%M:%S")
 
-    results_path = Path(f"regression_analysis_results/{date_time}")
+    results_path = Path(f"regression_analysis_results/{estimator_name}_r2-{round(score, 4)}_{date_time}")
     results_path.mkdir(parents=True, exist_ok=True)
 
     predictive_model_filename = f"{results_path}/predictive_model_{estimator_name}_{date_time}"
