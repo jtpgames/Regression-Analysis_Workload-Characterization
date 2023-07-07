@@ -6,8 +6,8 @@ from sqlite3 import Connection, Error, Cursor
 from pandas import DataFrame
 from typing import Tuple
 
-from StringUtils import get_date_from_string
-from TrainingDatabase import read_all_training_data_from_db_using_sqlalchemy, \
+from rast_common.StringUtils import get_date_from_string
+from rast_common.TrainingDatabase import read_all_training_data_from_db_using_sqlalchemy, \
     read_training_data_from_db_between_using_sqlalchemy
 
 

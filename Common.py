@@ -8,7 +8,7 @@ from numpy import std, mean, ndarray
 from pandas import DataFrame
 
 from CommonDb import create_connection, training_data_exists_in_db, SQLSelectExecutor
-from StringUtils import get_date_from_string
+from rast_common.StringUtils import get_date_from_string
 
 known_request_types = {}
 

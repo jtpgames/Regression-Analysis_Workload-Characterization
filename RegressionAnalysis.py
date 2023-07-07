@@ -113,41 +113,6 @@ def extract_training_data(db_path: str, begin_end: Tuple[str, str] = ()):
     #
     # return training_data
 
-    # The following used local files instead of a sqlite database
-
-    # i = 1
-    #
-    # # logfiles = glob("data/Conv_2020-12-21.log")
-    # # logfiles.extend(glob("data/Conv_2020-12-22.log"))
-    # # logfiles.extend(glob("data/Conv_2020-12-23.log"))
-    # # logfiles.extend(glob("data/Conv_2020-12-24.log"))
-    # # logfiles.extend(glob("data/Conv_2020-12-25.log"))
-    # # logfiles.extend(glob("data/Conv_2020-12-26.log"))
-    # # logfiles.extend(glob("data/Conv_2020-12-27.log"))
-    #
-    # logfiles = glob("data/Conv_2020-12-28.log")
-    # logfiles.extend(glob("data/Conv_2020-12-29.log"))
-    # logfiles.extend(glob("data/Conv_2020-12-3*.log"))
-    # logfiles.extend(glob("data/Conv_2021-01-*.log"))
-    #
-    # for logFile in sorted(logfiles):
-    #     data = read_performance_metrics_from_log_file(logFile)
-    #     # outliers = detect_response_time_outliers(data)
-    #     # print(outliers.head())
-    #     # print(data.describe())
-    #     # data = remove_outliers_from(data, outliers)
-    #     print(data)
-    #     training_data = training_data.append(data)
-    #
-    #     if plotTrainingData:
-    #         plotDataInSubplot(fig, data, i, logFile)
-    #
-    #     i += 1
-    #
-    # if plotTrainingData:
-    #     fig.update_layout(title='Training Data')
-    #     fig.show()
-
 
 def plotDataInSubplot(fig, dataToPlot: DataFrame, row: int, name: str):
     import plotly.graph_objects as go
