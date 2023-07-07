@@ -40,7 +40,7 @@ from sklearn2pmml import sklearn2pmml, make_pmml_pipeline
 
 from Common import read_performance_metrics_from_log_file, detect_response_time_outliers, remove_outliers_from, \
     print_timing
-from CommonDb import read_all_performance_metrics_from_db, known_request_types
+from rast_common.TrainingDatabaseUtils import read_all_performance_metrics_from_db, known_request_types
 
 plotTrainingData = False
 
