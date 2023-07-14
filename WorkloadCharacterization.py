@@ -14,9 +14,11 @@ from pandas import DataFrame
 import plotly.express as px
 from plotly.graph_objs import Figure
 from plotly.subplots import make_subplots
+from rast_common import read_all_performance_metrics_from_db
 
 from Common import detect_response_time_outliers, remove_outliers_from, read_data_line_from_log_file
-from CommonDb import read_all_performance_metrics_from_db, known_request_types
+
+known_request_types = {}
 
 RESPONSE_TIMES_BY_TYPE_CACHE = "cache/response_times_by_type.joblib"
 
@@ -449,7 +451,8 @@ def use_db():
         'Response Time s'
     ])
 
-    training_data = extract_training_data(r"db/trainingdata_cumulative.db")
+    global known_request_types
+    training_data, known_request_types = extract_training_data(r"db/trainingdata_cumulative.db")
 
     relevantData: DataFrame = training_data.iloc[:, [0, 1, 5, 6]]
 

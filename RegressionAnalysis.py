@@ -38,9 +38,11 @@ from typing import Tuple
 
 from sklearn2pmml import sklearn2pmml, make_pmml_pipeline
 
-from Common import read_performance_metrics_from_log_file, detect_response_time_outliers, remove_outliers_from, \
+from Common import detect_response_time_outliers, remove_outliers_from, \
     print_timing
-from rast_common.TrainingDatabaseUtils import read_all_performance_metrics_from_db, known_request_types
+from rast_common.TrainingDatabaseUtils import read_all_performance_metrics_from_db
+
+known_request_types = {}
 
 plotTrainingData = False
 
@@ -81,7 +83,8 @@ def extract_training_data(db_path: str, begin_end: Tuple[str, str] = ()):
     if plotTrainingData:
         fig = make_subplots(rows=7, cols=1)
 
-    training_data = read_all_performance_metrics_from_db(db_path, begin_end)
+    global known_request_types
+    training_data, known_request_types = read_all_performance_metrics_from_db(db_path, begin_end)
 
     different_request_types = training_data['Request Type'].unique()
     training_data_without_outliers = training_data
