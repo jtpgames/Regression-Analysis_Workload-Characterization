@@ -31,6 +31,7 @@ from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.neural_network import MLPRegressor
+from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.base import BaseEstimator
@@ -87,6 +88,15 @@ def extract_training_data(db_path: str, begin_end: Tuple[str, str] = ()):
     training_data, known_request_types = read_all_performance_metrics_from_db(db_path, begin_end)
 
     different_request_types = training_data['Request Type'].unique()
+
+    count = (training_data['Response Time s'] == 0).sum()
+    # perform zero removal, i.e., drop all rows with a response time of zero
+    training_data.drop(
+        training_data[training_data['Response Time s'] == 0].index,
+        inplace=True
+    )
+    print("Number of zero value removed: ", count)
+
     training_data_without_outliers = training_data
     number_of_outliers = 0
     for request_type in different_request_types:
@@ -97,14 +107,6 @@ def extract_training_data(db_path: str, begin_end: Tuple[str, str] = ()):
         number_of_outliers += count_of_outliers
 
     print("Number of outliers: ", number_of_outliers)
-
-    count = (training_data_without_outliers['Response Time s'] == 0).sum()
-    # perform zero removal, i.e., drop all rows with a response time of zero
-    training_data_without_outliers.drop(
-        training_data_without_outliers[training_data_without_outliers['Response Time s'] == 0].index,
-        inplace=True
-    )
-    print("Number of zero value removed: ", count)
 
     return training_data_without_outliers
 
@@ -248,6 +250,10 @@ def main(
     # X_train = orig_X_train.iloc[:, [2, 4, 5, 7, 8]]
     # X_test = orig_X_test.iloc[:, [2, 4, 5, 7, 8]]
 
+    # take a subset of X's columns (PR 1, Request Type, RPS, RPM, BPS, PPS)
+    X_train = orig_X_train.iloc[:, [2, 5, 7, 8, 10, 11]]
+    X_test = orig_X_test.iloc[:, [2, 5, 7, 8, 10, 11]]
+
     # or take all columns.
     # X_train = orig_X_train
     # X_test = orig_X_test
@@ -270,7 +276,8 @@ def main(
     # estimators.append(('Lasso', Lasso()))
     # estimators.append(('ElasticNet', ElasticNet()))
     estimators.append(('DT', DecisionTreeRegressor()))
-    # estimators.append(('SGD', SGDRegressor()))
+    # estimators.append(('SGD', make_pipeline(StandardScaler(),
+    #                                         SGDRegressor())))
     # estimators.append(('MLP', MLPRegressor(learning_rate_init=0.01, early_stopping=True)))
     # estimators.append(('KNN', KNeighborsRegressor(weights='distance')))
     # estimators.append(('AdaLR', AdaBoostRegressor(LinearRegression(), n_estimators=10)))
@@ -288,12 +295,12 @@ def main(
 
     # exit(1)
 
-    target_model: tuple[str, BaseEstimator] = estimators[0]
+    target_model: tuple[str, BaseEstimator] = estimators[1]
 
     estimator_name = target_model[0]
     estimator = target_model[1]
 
-    if estimator_name == "LR":
+    if estimator_name == "Ridge":
         estimator = GridSearchCV(estimator,
                                  {'alpha': [0.0001*(10**n) for n in range(1, 7)],
                                   'fit_intercept': [True, False],
@@ -308,6 +315,15 @@ def main(
                                      'criterion': ["squared_error", "friedman_mse"]
                                  },
                                  verbose=3)
+    # elif estimator_name == "SGD":
+    #     estimator = GridSearchCV(estimator,
+    #                              {
+    #                                  'sgdregressor__alpha': [0.0001*(10**n) for n in range(1, 7)],
+    #                                  'sgdregressor__fit_intercept': [True, False],
+    #                                  'sgdregressor__max_iter': [100, 1000, 2000],
+    #                                  'sgdregressor__learning_rate': ['constant', 'optimal', 'invscaling', 'adaptive']
+    #                              },
+    #                              verbose=3)
     # estimator = GridSearchCV(estimator, {'alpha': [0.0001, 0.001, 0.1, 1], 'l1_ratio': [0.1, 0.15, 0.2]}, verbose=3)
 
     estimator.fit(X_train, y_train)
