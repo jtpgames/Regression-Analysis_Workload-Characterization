@@ -80,7 +80,7 @@ def detect_and_remove_outliers_for_request_type(data: DataFrame, request_type: i
 
 
 @print_timing
-def extract_training_data(db_path: str, begin_end: Tuple[str, str] = ()):
+def extract_training_data(db_path: str, begin_end: Tuple[str, str] = ()) -> DataFrame:
     if plotTrainingData:
         fig = make_subplots(rows=7, cols=1)
 
@@ -177,7 +177,7 @@ def main(
 ):
     begin = datetime.now()
 
-    training_data = extract_training_data(database_path)
+    training_data: DataFrame = extract_training_data(database_path)
 
     # training_data = extract_training_data(r"db/trainingdata_2021-04-06.db", ("2021 03 30", "2021 04 05"))
     # validation_data = extract_training_data(r"db/trainingdata_2021-04-06.db", ("2021 04 05", "2021 04 05"))
@@ -197,6 +197,20 @@ def main(
         plotTrainingDataUsingPlotly(dataToPlot)
 
         exit(1)
+
+    # -- Replace bytes and packets per second transmitted with a rolling average --
+    # training_data['BPS transmitted'] = training_data['BPS transmitted'] \
+    #     .rolling(window=5, center=True) \
+    #     .mean() \
+    #     .fillna(method='ffill') \
+    #     .fillna(method='bfill')
+    #
+    # training_data['PPS transmitted'] = training_data['PPS transmitted'] \
+    #     .rolling(window=5, center=True) \
+    #     .mean() \
+    #     .fillna(method='ffill') \
+    #     .fillna(method='bfill')
+    # --
 
     print("==Training Data==")
     print(training_data.describe())
