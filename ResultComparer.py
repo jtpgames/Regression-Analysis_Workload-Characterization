@@ -250,7 +250,7 @@ class ResultComparer:
         fig = kwargs['figure']
 
         fig.add_trace(go.Box(y=real_times_for_request_i['Processing Time s'] * 1000,
-                      name=f'Validation Data request {i}'),
+                             name=f'Validation Data request {i}'),
                       row=i+1, col=1)
         fig.update_yaxes(range=[0, 100], row=i+1, col=1)
         fig.add_trace(go.Box(y=predicted_times_for_request_i['Processing Time s'] * 1000,
@@ -343,7 +343,7 @@ class ResultComparer:
         return nse_val
 
 
-if __name__ == "__main__":
+def main():
     # in the following, we compare a simulation of the TeaStore.
     # ValidationData contains the processing times of the TeaStore.
     # The processing times were generated with a Locust Test.
@@ -390,3 +390,7 @@ if __name__ == "__main__":
             )
 
     SimilarityScoresCollector.write_to_csv("similarity_scores.csv")
+
+
+if __name__ == "__main__":
+    main()
