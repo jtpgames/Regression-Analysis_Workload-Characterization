@@ -41,7 +41,7 @@ from sklearn2pmml import sklearn2pmml, make_pmml_pipeline
 
 from Common import detect_response_time_outliers, remove_outliers_from, \
     print_timing
-from rast_common.TrainingDatabaseUtils import read_all_performance_metrics_from_db
+from rast_common.main.TrainingDatabaseUtils import read_all_performance_metrics_from_db
 
 known_request_types = {}
 

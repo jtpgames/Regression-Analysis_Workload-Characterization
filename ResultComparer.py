@@ -11,10 +11,14 @@ import re
 
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
-from rast_common import read_all_performance_metrics_from_db
 
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.metrics.pairwise import euclidean_distances
+
+from rast_common.Version import select_version, TrainingDataEntityVersion
+select_version(TrainingDataEntityVersion.V1)
+
+from rast_common.main import read_all_performance_metrics_from_db
 
 known_request_types = {}
 
@@ -353,6 +357,7 @@ def main():
 
     intensities = ['low', 'low2', 'med', 'high']
     for intensity in intensities:
+        global known_request_types
         validationData, known_request_types = read_all_performance_metrics_from_db(f"TeaStoreResultComparisonData/validationdata_{intensity}-intensity.db")
         validationData = validationData.loc[:, ['Request Type', 'Response Time s']]
         validationData.rename(columns={'Response Time s': 'Processing Time s', 'Request Type': "ReqType"}, inplace=True)
