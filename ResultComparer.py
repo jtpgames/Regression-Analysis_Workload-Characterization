@@ -11,6 +11,7 @@ import re
 
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
+from scipy.spatial import distance
 
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.metrics.pairwise import euclidean_distances
@@ -127,48 +128,51 @@ class ResultComparer:
 
         fig = make_subplots(rows=10, cols=2)
 
-        # for i in range(0, 10):
-        for i in [2, 3, 4, 5, 7]:
-            request_type = get_request_type_of_int_value(i)
+        with open("requests_count.txt", 'a') as requests_file:
+            # for i in range(0, 10):
+            for i in [2, 3, 4, 5, 7]:
+                request_type = get_request_type_of_int_value(i)
 
-            print("")
-            print(f"Request Type {request_type}({i})")
-            print("==============")
+                print("")
+                print(f"Request Type {request_type}({i})")
+                print("==============")
 
-            predicted_times_for_request_i = prediction.query(f"ReqType == {i}")
-            real_times_for_request_i = validation.query(f"ReqType == {i}")
+                predicted_times_for_request_i = prediction.query(f"ReqType == {i}")
+                real_times_for_request_i = validation.query(f"ReqType == {i}")
 
-            if predicted_times_for_request_i['Processing Time s'].count() == 0:
-                print(f"No predictions for request type {request_type} available")
-                continue
+                if predicted_times_for_request_i['Processing Time s'].count() == 0:
+                    print(f"No predictions for request type {request_type} available")
+                    continue
 
-            number_of_real_times = len(real_times_for_request_i)
-            number_of_predicted_times = len(predicted_times_for_request_i)
-            print(f"Number of real times: {number_of_real_times}")
-            print(f"Number of predicted times: {number_of_predicted_times}")
+                number_of_real_times = len(real_times_for_request_i)
+                number_of_predicted_times = len(predicted_times_for_request_i)
+                print(f"Number of real times: {number_of_real_times}")
+                print(f"Number of predicted times: {number_of_predicted_times}")
 
-            if number_of_real_times != number_of_predicted_times:
-                print(f"WARNING: {number_of_real_times} != {number_of_predicted_times} for {info}")
+                print(f"{info.Intensity}, {request_type}: {number_of_real_times}", file=requests_file)
 
-            min_len = min(number_of_real_times, number_of_predicted_times)
+                if number_of_real_times != number_of_predicted_times:
+                    print(f"WARNING: {number_of_real_times} != {number_of_predicted_times} for {info}")
 
-            if len(predicted_times_for_request_i) > min_len:
-                predicted_times_for_request_i = predicted_times_for_request_i[:min_len]
-            else:
-                real_times_for_request_i = real_times_for_request_i[:min_len]
+                min_len = min(number_of_real_times, number_of_predicted_times)
 
-            for func in args:
-                func(
-                    real_times_for_request_i,
-                    predicted_times_for_request_i,
-                    ReqType=i,
-                    ReqTypeStr=request_type,
-                    figure=fig,
-                    info=info
-                )
+                if len(predicted_times_for_request_i) > min_len:
+                    predicted_times_for_request_i = predicted_times_for_request_i[:min_len]
+                else:
+                    real_times_for_request_i = real_times_for_request_i[:min_len]
 
-        fig.update_layout(title='Measured vs Predicted processing times in ms')
-        # fig.show()
+                for func in args:
+                    func(
+                        real_times_for_request_i,
+                        predicted_times_for_request_i,
+                        ReqType=i,
+                        ReqTypeStr=request_type,
+                        figure=fig,
+                        info=info
+                    )
+
+            fig.update_layout(title='Measured vs Predicted processing times in ms')
+            # fig.show()
 
     @staticmethod
     def similarity(real_times_for_request_i: DataFrame, predicted_times_for_request_i: DataFrame, **kwargs):
@@ -182,8 +186,21 @@ class ResultComparer:
         real_times_for_request_i_list = real_times_for_request_i['Processing Time s'].tolist()
         predicted_times_for_request_i_list = predicted_times_for_request_i['Processing Time s'].tolist()
 
-        # rmse = ResultComparer.normalized_root_mean_squared_error(real_times_for_request_i_list, predicted_times_for_request_i_list)
-        # print(f"Root-Mean-Squared-Error: {rmse}")
+        rmse = ResultComparer.normalized_root_mean_squared_error(real_times_for_request_i_list, predicted_times_for_request_i_list)
+        print(f"Root-Mean-Squared-Error: {rmse}")
+
+        # Numpy corrcoef function to calculate the Pearson correlation coefficient and p-value
+        pearson_corr = np.corrcoef(real_times_for_request_i_list, predicted_times_for_request_i_list)[0][1]
+
+        print("Pearson Correlation between the given two variables: " + \
+              str(pearson_corr))
+
+        # Use the cityblock function from scipy's distance module to calculate the Manhattan distance
+        manhattan_distance = distance.cityblock(real_times_for_request_i_list, predicted_times_for_request_i_list)
+
+        # Print the result
+        print("Manhattan Distance between the given two points: " + \
+              str(manhattan_distance))
 
         euclidean_distance = ResultComparer.l2_normalized_euclidean_distance(
             real_times_for_request_i_list,
@@ -199,6 +216,15 @@ class ResultComparer:
         )
         print(f"Cosine Similarity: {cosine_similarity}")
 
+        es = ResultComparer.nash_sutcliffe_score(
+            real_times_for_request_i_list,
+            predicted_times_for_request_i_list
+        )
+        print(f"Nash Sutcliffe score: {es}")
+
+        r2score = ResultComparer.r2score(real_times_for_request_i_list, predicted_times_for_request_i_list)
+        print(f"R² score: {r2score}")
+
         request_type: str = kwargs['ReqTypeStr']
         data_info: DataInfo = kwargs['info']
 
@@ -209,15 +235,6 @@ class ResultComparer:
             request_type,
             cosine_similarity
         )
-
-        # es = ResultComparer.nash_sutcliffe_score(
-        #     real_times_for_request_i_list,
-        #     predicted_times_for_request_i_list
-        # )
-        # print(f"ES: {es}")
-        #
-        # r2score = ResultComparer.r2score(real_times_for_request_i_list, predicted_times_for_request_i_list)
-        # print(f"R² score: {r2score}")
 
     @staticmethod
     def avg_min_max(real_times_for_request_i: DataFrame, predicted_times_for_request_i: DataFrame, **kwargs):
