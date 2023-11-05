@@ -257,8 +257,8 @@ def main(
     # X_test = orig_X_test.iloc[:, [2, 4, 5]]
 
     # take a subset of X's columns (PR 1, Request Type, RPS, RPM)
-    X_train = orig_X_train.iloc[:, [2, 5, 7, 8]]
-    X_test = orig_X_test.iloc[:, [2, 5, 7, 8]]
+    # X_train = orig_X_train.iloc[:, [2, 5, 7, 8]]
+    # X_test = orig_X_test.iloc[:, [2, 5, 7, 8]]
 
     # take a subset of X's columns (PR 1, PR 3, Request Type, RPS, RPM)
     # X_train = orig_X_train.iloc[:, [2, 4, 5, 7, 8]]
@@ -309,7 +309,7 @@ def main(
 
     # exit(1)
 
-    target_model: tuple[str, BaseEstimator] = estimators[1]
+    target_model: tuple[str, BaseEstimator] = estimators[0]
 
     estimator_name = target_model[0]
     estimator = target_model[1]
@@ -319,13 +319,13 @@ def main(
                                  {'alpha': [0.0001*(10**n) for n in range(1, 7)],
                                   'fit_intercept': [True, False],
                                   'max_iter': [100, 1000, 2000],
-                                  'solver': ['auto']
+                                  'solver': ['auto', 'sparse_cg', 'lsqr']
                                   },
                                  verbose=3)
     elif estimator_name == "DT":
         estimator = GridSearchCV(estimator,
                                  {
-                                     'max_depth': [8, 10, 12, 14],
+                                     'max_depth': [8, 10, 12, 14, None],
                                      'criterion': ["squared_error", "friedman_mse"]
                                  },
                                  verbose=3)
