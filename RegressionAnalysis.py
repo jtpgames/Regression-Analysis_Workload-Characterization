@@ -198,18 +198,33 @@ def main(
 
         exit(1)
 
+    # transform bytes per second to kilobytes per second
+    training_data['BPS transmitted'] = training_data['BPS transmitted'] / 1_000
+
+    training_data['RPS'] = training_data['RPS'] \
+        .rolling(window=5, center=True) \
+        .mean() \
+        .fillna(method='ffill') \
+        .fillna(method='bfill')
+
+    training_data['RPM'] = training_data['RPM'] \
+        .rolling(window=5, center=True) \
+        .mean() \
+        .fillna(method='ffill') \
+        .fillna(method='bfill')
+
     # -- Replace bytes and packets per second transmitted with a rolling average --
-    # training_data['BPS transmitted'] = training_data['BPS transmitted'] \
-    #     .rolling(window=5, center=True) \
-    #     .mean() \
-    #     .fillna(method='ffill') \
-    #     .fillna(method='bfill')
-    #
-    # training_data['PPS transmitted'] = training_data['PPS transmitted'] \
-    #     .rolling(window=5, center=True) \
-    #     .mean() \
-    #     .fillna(method='ffill') \
-    #     .fillna(method='bfill')
+    training_data['BPS transmitted'] = training_data['BPS transmitted'] \
+        .rolling(window=5, center=True) \
+        .mean() \
+        .fillna(method='ffill') \
+        .fillna(method='bfill')
+
+    training_data['PPS transmitted'] = training_data['PPS transmitted'] \
+        .rolling(window=5, center=True) \
+        .mean() \
+        .fillna(method='ffill') \
+        .fillna(method='bfill')
     # --
 
     print("==Training Data==")
@@ -256,13 +271,13 @@ def main(
     # X_train = orig_X_train.iloc[:, [2, 4, 5]]
     # X_test = orig_X_test.iloc[:, [2, 4, 5]]
 
-    # take a subset of X's columns (PR 1, Request Type, RPS, RPM)
-    # X_train = orig_X_train.iloc[:, [2, 5, 7, 8]]
-    # X_test = orig_X_test.iloc[:, [2, 5, 7, 8]]
-
     # take a subset of X's columns (PR 1, PR 3, Request Type, RPS, RPM)
     # X_train = orig_X_train.iloc[:, [2, 4, 5, 7, 8]]
     # X_test = orig_X_test.iloc[:, [2, 4, 5, 7, 8]]
+
+    # take a subset of X's columns (PR 1, Request Type, RPS, RPM)
+    # X_train = orig_X_train.iloc[:, [2, 5, 7, 8]]
+    # X_test = orig_X_test.iloc[:, [2, 5, 7, 8]]
 
     # take a subset of X's columns (PR 1, Request Type, RPS, RPM, BPS, PPS)
     X_train = orig_X_train.iloc[:, [2, 5, 7, 8, 10, 11]]
@@ -309,7 +324,7 @@ def main(
 
     # exit(1)
 
-    target_model: tuple[str, BaseEstimator] = estimators[0]
+    target_model: tuple[str, BaseEstimator] = estimators[1]
 
     estimator_name = target_model[0]
     estimator = target_model[1]
@@ -321,14 +336,14 @@ def main(
                                   'max_iter': [100, 1000, 2000],
                                   'solver': ['auto', 'sparse_cg', 'lsqr']
                                   },
-                                 verbose=3)
+                                 verbose=1)
     elif estimator_name == "DT":
         estimator = GridSearchCV(estimator,
                                  {
                                      'max_depth': [8, 10, 12, 14, None],
                                      'criterion': ["squared_error", "friedman_mse"]
                                  },
-                                 verbose=3)
+                                 verbose=1)
     # elif estimator_name == "SGD":
     #     estimator = GridSearchCV(estimator,
     #                              {

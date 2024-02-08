@@ -4,7 +4,7 @@ import sqlite3
 from datetime import datetime
 from sqlite3 import Connection, Error, Cursor
 
-from rast_common.StringUtils import get_date_from_string
+from rast_common.main.StringUtils import get_date_from_string
 
 
 class TrainingDataRow:
