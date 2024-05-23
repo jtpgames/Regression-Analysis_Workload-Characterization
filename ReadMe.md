@@ -6,7 +6,7 @@ Workload Characterization Components of RAST.
   component of RAST. It contains the information about the requests 
   processed by the System under Test (SUT), like timestamp, parallel 
   requests executed, request time, and processing time. 
-* Requests_per_time_unit_*.log: refers 
+* Requests_per_time_unit_*.log: [TODO]
 * `DataFrame`: refers to the DataFrame class provided by the pandas library.
 * scikit-learn: is the library we use for machine learning.
 
@@ -36,6 +36,9 @@ Options:
 
     --help          Show this message and exit.
 
+### How to choose the predictive model to create
+1. Locate the line `target_model: tuple[str, BaseEstimator] = estimators[1]` in the file `ResultComparer.py`.
+2. Change the index to the desired model: 0 = Ridge Regression, 1 = Decision Tree Regression.
 
 ## WorkloadCharacterization.py
 1. Reads requests_per_time_unit_*.logs into 
