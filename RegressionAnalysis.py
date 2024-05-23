@@ -39,9 +39,13 @@ from typing import Tuple
 
 from sklearn2pmml import sklearn2pmml, make_pmml_pipeline
 
+from rast_common.Version import select_version, TrainingDataEntityVersion
+select_version(TrainingDataEntityVersion.V1)
+
 from Common import detect_response_time_outliers, remove_outliers_from, \
     print_timing
-from rast_common.main.TrainingDatabaseUtils import read_all_performance_metrics_from_db
+
+from rast_common.main import read_all_performance_metrics_from_db
 
 known_request_types = {}
 
@@ -268,8 +272,8 @@ def main(
     # X_test = orig_X_test.iloc[:, [2, 5]]
 
     # take a subset of X's columns (PR 1, PR 3, Request Type)
-    # X_train = orig_X_train.iloc[:, [2, 4, 5]]
-    # X_test = orig_X_test.iloc[:, [2, 4, 5]]
+    X_train = orig_X_train.iloc[:, [2, 4, 5]]
+    X_test = orig_X_test.iloc[:, [2, 4, 5]]
 
     # take a subset of X's columns (PR 1, PR 3, Request Type, RPS, RPM)
     # X_train = orig_X_train.iloc[:, [2, 4, 5, 7, 8]]
@@ -280,8 +284,8 @@ def main(
     # X_test = orig_X_test.iloc[:, [2, 5, 7, 8]]
 
     # take a subset of X's columns (PR 1, Request Type, RPS, RPM, BPS, PPS)
-    X_train = orig_X_train.iloc[:, [2, 5, 7, 8, 10, 11]]
-    X_test = orig_X_test.iloc[:, [2, 5, 7, 8, 10, 11]]
+    # X_train = orig_X_train.iloc[:, [2, 5, 7, 8, 10, 11]]
+    # X_test = orig_X_test.iloc[:, [2, 5, 7, 8, 10, 11]]
 
     # or take all columns.
     # X_train = orig_X_train
