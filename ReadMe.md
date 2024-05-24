@@ -27,23 +27,21 @@ Workload Characterization Components of RAST.
 Additionally, there is a lot of commented code for visualization of the 
 training data using matplotlib or plotly.
 
-Usage: `RegressionAnalysis.py [OPTIONS] DATABASE_PATH`
+Usage: `RegressionAnalysis.py [OPTIONS] [DATABASE_PATH] [ESTIMATOR_TO_USE]`
 
 Arguments:
 
-    DATABASE_PATH   Path to the training database to load  [required]
+    [DATABASE_PATH]     Path to the training database to load  [default:
+    db/trainingdata_cumulative.db]
+    [ESTIMATOR_TO_USE]  Estimator to use. Can be Ridge or DT.  [default: Ridge]
 
 Options:
 
-    --help          Show this message and exit.
+    --help                          Show this message and exit.
 
 ### Example
 After creating a training database, it is placed in the `db` folder of the ML_ETL project by default. Run this command to create a predictive model for this specific training database.
 `python RegressionAnalysis.py ../ML_ETL/db/trainingdata_2024-05-24.db`
-
-### How to choose the predictive model to create
-1. Locate the line `target_model: tuple[str, BaseEstimator] = estimators[1]` in the file `ResultComparer.py`.
-2. Change the index to the desired model: 0 = Ridge Regression, 1 = Decision Tree Regression.
 
 ## WorkloadCharacterization.py
 1. Reads requests_per_time_unit_*.logs into 
