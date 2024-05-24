@@ -22,6 +22,7 @@ Workload Characterization Components of RAST.
    performance of the estimator using the test subset.
 6. Produces the predictive model and requests type mapping by exporting the 
    estimator and the dictionary containing the mapping.
+7. Stores model in the `regression_analysis_results` folder in the project. Each exported model is placed in a separate folder.
 
 Additionally, there is a lot of commented code for visualization of the 
 training data using matplotlib or plotly.
