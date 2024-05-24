@@ -178,6 +178,10 @@ def main(
             r"db/trainingdata_cumulative.db",
             help="Path to the training database to load"
         ),
+        estimator_to_use: str = typer.Argument(
+            default="Ridge",
+            help="Estimator to use. Can be Ridge or DT."
+        )
 ):
     begin = datetime.now()
 
@@ -328,7 +332,13 @@ def main(
 
     # exit(1)
 
-    target_model: tuple[str, BaseEstimator] = estimators[1]
+    if estimator_to_use == "Ridge":
+        target_model: tuple[str, BaseEstimator] = estimators[0]
+    elif estimator_to_use == "DT":
+        target_model: tuple[str, BaseEstimator] = estimators[1]
+    else:
+        print("Unknown estimator")
+        exit(1)
 
     estimator_name = target_model[0]
     estimator = target_model[1]
