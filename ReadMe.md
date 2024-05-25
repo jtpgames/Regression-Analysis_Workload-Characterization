@@ -12,36 +12,35 @@ Workload Characterization Components of RAST.
 
 # Short Description of the Scripts
 ## RegressionAnalysis.py
-1. Reads the training data from the database 
-   into a `DataFrame`.
+
+1. Reads the training data from the database into a `DataFrame`.
 2. Performs outlier detection and removal.
-3. Splits the training data into train and test subset.
-4. Performs cross-validation using a series of different scikit-learn 
-   estimators.
-5. Fits one specific estimator using the train subset and then evaluates the 
-   performance of the estimator using the test subset.
-6. Produces the predictive model and requests type mapping by exporting the 
-   estimator and the dictionary containing the mapping.
-7. Stores model in the `regression_analysis_results` folder in the project. Each exported model is placed in a separate folder.
+3. Splits the training data into train and test subsets.
+4. Performs cross-validation using a series of different scikit-learn estimators.
+5. Fits a specific estimator using the train subset and then evaluates the performance of the estimator using the test subset.
+6. Produces the predictive model and request type mapping by exporting the estimator and the dictionary containing the mapping.
+7. Stores the model in the `regression_analysis_results` folder in the project. Each exported model is placed in a separate folder.
 
-Additionally, there is a lot of commented code for visualization of the 
-training data using matplotlib or plotly.
+Additionally, there is a lot of commented code for visualization of the training data using matplotlib or plotly.
 
-Usage: `RegressionAnalysis.py [OPTIONS] [DATABASE_PATH] [ESTIMATOR_TO_USE]`
+### Usage
+```sh
+RegressionAnalysis.py [OPTIONS] [DATABASE_PATH] [ESTIMATOR_TO_USE]
+```
 
-Arguments:
-
-    [DATABASE_PATH]     Path to the training database to load  [default:
-    db/trainingdata_cumulative.db]
-    [ESTIMATOR_TO_USE]  Estimator to use. Can be Ridge or DT.  [default: Ridge]
-
-Options:
-
-    --help                          Show this message and exit.
+### Arguments
+* `[DATABASE_PATH]` - Path to the training database to load.
+Default: `db/trainingdata_cumulative.db`
+* `[ESTIMATOR_TO_USE]` - Estimator to use. Can be `Ridge` or `DT`.
+Default: `Ridge`
+### Options
+* `--help` - Show this message and exit.
 
 ### Example
-After creating a training database, it is placed in the `db` folder of the ML_ETL project by default. Run this command to create a predictive model for this specific training database.
-`python RegressionAnalysis.py ../ML_ETL/db/trainingdata_2024-05-24.db`
+After creating a training database, it is placed in the `db` folder of the ML_ETL project by default. Run this command to create a predictive model for this specific training database:
+```sh
+python RegressionAnalysis.py ../ML_ETL/db/trainingdata_2024-05-24.db
+```
 
 ## WorkloadCharacterization.py
 1. Reads requests_per_time_unit_*.logs into 
