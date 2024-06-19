@@ -73,6 +73,9 @@ def format_request_type(request_type_as_int, pos=None):
 @print_timing
 def detect_and_remove_outliers_for_request_type(data: DataFrame, request_type: int) -> Tuple[DataFrame, int]:
     filtered_data = data.query(f"`Request Type` == {request_type}")
+    if filtered_data.empty:
+        print(f"Empty DataFrame for request type {request_type}")
+        return data, 0
 
     # print(filtered_data)
 
