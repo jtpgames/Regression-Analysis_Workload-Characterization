@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from math import sqrt
 
 import numpy as np
+import typer
 from numpy.linalg import norm
 from numpy import mean, max
 from pandas import DataFrame
@@ -97,11 +98,11 @@ def read_processing_times_from_teastoresimulation_log_file(path: str, use_predic
     return df
 
 
-def get_request_type_of_int_value(request_type_as_int: int) -> str:
-    keys = [k for k, v in known_request_types.items() if v == request_type_as_int]
+def get_request_type_and_index(request: str) -> tuple[str, int]:
+    keys = [(k, v) for k, v in known_request_types.items() if request in k]
     if keys:
         return keys[0]
-    return "!!Unknown!!"
+    return "!!Unknown!!", -1
 
 
 @dataclass
@@ -128,10 +129,19 @@ class ResultComparer:
 
         fig = make_subplots(rows=10, cols=2)
 
+        requests_to_analyse = [
+            "LoginActionServlet",
+            "CategoryServlet",
+            "ProductServlet",
+            "CartActionServlet",
+            "ProfileServlet"
+        ]
+
+        get_request_type_and_index("LoginAction")
+
         with open("requests_count.txt", 'a') as requests_file:
-            # for i in range(0, 10):
-            for i in [2, 3, 4, 5, 7]:
-                request_type = get_request_type_of_int_value(i)
+            for request in requests_to_analyse:
+                request_type, i = get_request_type_and_index(request)
 
                 print("")
                 print(f"Request Type {request_type}({i})")
@@ -364,7 +374,12 @@ class ResultComparer:
         return nse_val
 
 
-def main():
+def main(
+        comparison_data_path: str = typer.Argument(
+            "TeaStoreResultComparisonData",
+            help="Path to the directory containing the validation database and prediction data logs"
+        )
+):
     # in the following, we compare a simulation of the TeaStore.
     # ValidationData contains the processing times of the TeaStore.
     # The processing times were generated with a Locust Test.
@@ -372,14 +387,14 @@ def main():
     # By comparing the two data sets we see how good our simulation
     # is able to predict the processing time of the TeaStore.
 
-    intensities = ['low', 'low2', 'med', 'high']
+    intensities = ['low', 'low_2', 'med', 'high']
     for intensity in intensities:
         global known_request_types
-        validationData, known_request_types = read_all_performance_metrics_from_db(f"TeaStoreResultComparisonData/validationdata_{intensity}-intensity.db")
+        validationData, known_request_types = read_all_performance_metrics_from_db(f"{comparison_data_path}/validationdata_{intensity}-intensity.db")
         validationData = validationData.loc[:, ['Request Type', 'Response Time s']]
         validationData.rename(columns={'Response Time s': 'Processing Time s', 'Request Type': "ReqType"}, inplace=True)
 
-        for filename in glob.iglob(os.path.join("TeaStoreResultComparisonData", '**', '*.log'), recursive=True):
+        for filename in glob.iglob(os.path.join(comparison_data_path, '**', '*.log'), recursive=True):
             if f"_{intensity}-" not in filename:
                 continue
 
@@ -415,4 +430,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    typer.run(main)
