@@ -159,7 +159,7 @@ class ResultComparer:
                 print(f"Number of real times: {number_of_real_times}")
                 print(f"Number of predicted times: {number_of_predicted_times}")
 
-                print(f"{info.Intensity}, {request_type}: {number_of_real_times}", file=requests_file)
+                print(f"{info.Model}, {info.Corrections}, {info.Intensity}, {request_type}: validation {number_of_real_times}, predicted {number_of_predicted_times}", file=requests_file)
 
                 if number_of_real_times != number_of_predicted_times:
                     print(f"WARNING: {number_of_real_times} != {number_of_predicted_times} for {info}")
@@ -386,6 +386,8 @@ def main(
     # PredictionData contains the processing times of the simulation.
     # By comparing the two data sets we see how good our simulation
     # is able to predict the processing time of the TeaStore.
+
+    open('requests_count.txt', 'w').close()
 
     intensities = ['low', 'low_2', 'med', 'high']
     for intensity in intensities:
