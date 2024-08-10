@@ -50,7 +50,7 @@ from rast_common.main import read_all_performance_metrics_from_db
 known_request_types = {}
 
 plotTrainingData = False
-
+use_network_metrics = False
 
 def format_date(x, pos=None):
     if x < 0:
@@ -168,13 +168,6 @@ training_data = DataFrame(columns=[
     'Response Time s'
 ])
 
-# training_data = readPerformanceMetricsFromLogFile("data/Conv_2020-08-06.log")
-# outliers = detect_response_time_outliers(training_data)
-# training_data = remove_outliers_from(training_data, outliers)
-# validation_data = readPerformanceMetricsFromLogFile("data/V_Conv_2020-08-13.log")
-# outliers = detect_response_time_outliers(validation_data)
-# validation_data = remove_outliers_from(validation_data, outliers)
-
 
 def main(
         database_path: str = typer.Argument(
@@ -209,8 +202,23 @@ def main(
 
         exit(1)
 
-    # transform bytes per second to kilobytes per second
-    training_data['BPS transmitted'] = training_data['BPS transmitted'] / 1_000
+    if use_network_metrics:
+        # transform bytes per second to kilobytes per second
+        training_data['BPS transmitted'] = training_data['BPS transmitted'] / 1_000
+
+        # -- Replace bytes and packets per second transmitted with a rolling average --
+        training_data['BPS transmitted'] = training_data['BPS transmitted'] \
+            .rolling(window=5, center=True) \
+            .mean() \
+            .fillna(method='ffill') \
+            .fillna(method='bfill')
+
+        training_data['PPS transmitted'] = training_data['PPS transmitted'] \
+            .rolling(window=5, center=True) \
+            .mean() \
+            .fillna(method='ffill') \
+            .fillna(method='bfill')
+        # --
 
     training_data['RPS'] = training_data['RPS'] \
         .rolling(window=5, center=True) \
@@ -224,19 +232,6 @@ def main(
         .fillna(method='ffill') \
         .fillna(method='bfill')
 
-    # -- Replace bytes and packets per second transmitted with a rolling average --
-    training_data['BPS transmitted'] = training_data['BPS transmitted'] \
-        .rolling(window=5, center=True) \
-        .mean() \
-        .fillna(method='ffill') \
-        .fillna(method='bfill')
-
-    training_data['PPS transmitted'] = training_data['PPS transmitted'] \
-        .rolling(window=5, center=True) \
-        .mean() \
-        .fillna(method='ffill') \
-        .fillna(method='bfill')
-    # --
 
     print("==Training Data==")
     print(training_data.describe())
@@ -282,17 +277,18 @@ def main(
     # X_train = orig_X_train.iloc[:, [2, 4, 5]]
     # X_test = orig_X_test.iloc[:, [2, 4, 5]]
 
-    # take a subset of X's columns (PR 1, PR 3, Request Type, RPS, RPM)
-    X_train = orig_X_train.iloc[:, [2, 4, 5, 7, 8]]
-    X_test = orig_X_test.iloc[:, [2, 4, 5, 7, 8]]
+    if use_network_metrics:
+        # take a subset of X's columns (PR 1, Request Type, RPS, RPM, BPS, PPS)
+        X_train = orig_X_train.iloc[:, [2, 5, 7, 8, 10, 11]]
+        X_test = orig_X_test.iloc[:, [2, 5, 7, 8, 10, 11]]
+    else:
+        # take a subset of X's columns (PR 1, PR 3, Request Type, RPS, RPM)
+        X_train = orig_X_train.iloc[:, [2, 4, 5, 7, 8]]
+        X_test = orig_X_test.iloc[:, [2, 4, 5, 7, 8]]
 
-    # take a subset of X's columns (PR 1, Request Type, RPS, RPM)
-    # X_train = orig_X_train.iloc[:, [2, 5, 7, 8]]
-    # X_test = orig_X_test.iloc[:, [2, 5, 7, 8]]
-
-    # take a subset of X's columns (PR 1, Request Type, RPS, RPM, BPS, PPS)
-    # X_train = orig_X_train.iloc[:, [2, 5, 7, 8, 10, 11]]
-    # X_test = orig_X_test.iloc[:, [2, 5, 7, 8, 10, 11]]
+        # take a subset of X's columns (PR 1, Request Type, RPS, RPM)
+        # X_train = orig_X_train.iloc[:, [2, 5, 7, 8]]
+        # X_test = orig_X_test.iloc[:, [2, 5, 7, 8]]
 
     # or take all columns.
     # X_train = orig_X_train
@@ -353,6 +349,7 @@ def main(
                                   'max_iter': [100, 1000, 2000],
                                   'solver': ['auto', 'sparse_cg', 'lsqr']
                                   },
+                                 pre_dispatch=1,
                                  verbose=1)
     elif estimator_name == "DT":
         estimator = GridSearchCV(estimator,
@@ -370,7 +367,6 @@ def main(
     #                                  'sgdregressor__learning_rate': ['constant', 'optimal', 'invscaling', 'adaptive']
     #                              },
     #                              verbose=3)
-    # estimator = GridSearchCV(estimator, {'alpha': [0.0001, 0.001, 0.1, 1], 'l1_ratio': [0.1, 0.15, 0.2]}, verbose=3)
 
     estimator.fit(X_train, y_train)
     # print(estimator.cv_results_)
