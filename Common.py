@@ -7,7 +7,6 @@ from numba import njit
 from numpy import std, mean, ndarray
 from pandas import DataFrame
 
-from CommonDb import create_connection, training_data_exists_in_db, SQLSelectExecutor
 from rast_common.main.StringUtils import get_date_from_string
 
 known_request_types = {}
@@ -31,40 +30,6 @@ def print_timing(func):
         print(fs.format(func.__name__, (end - start)*1_000))
         return result
     return wrapper
-
-
-def read_data_line_from_log_file_optimized(path: str):
-    db_connection = create_connection(r"db/trainingdata.db")
-
-    if db_connection is None:
-        return read_data_line_from_log_file(path)
-
-    if not training_data_exists_in_db(db_connection, path):
-        return read_data_line_from_log_file(path)
-
-    file_timestamp = datetime.strptime(
-        get_date_from_string(path),
-        "%Y-%m-%d"
-    )
-    date_to_check = file_timestamp
-
-    select = SQLSelectExecutor(db_connection) \
-        .construct_select_statement("gs_training_data") \
-        .add_condition_to_statement(f"strftime('%Y%m%d', timestamp) == '{date_to_check.strftime('%Y%m%d')}'")
-
-    cur = select.execute_select_statement()
-
-    for row in select.fetch_all_results(cur):
-        yield {
-            "time_stamp": row.timestamp,
-            "number_of_parallel_requests_start": row.number_of_parallel_requests_start,
-            "number_of_parallel_requests_end": row.number_of_parallel_requests_end,
-            "number_of_parallel_requests_finished": row.number_of_parallel_requests_finished,
-            "request_type": row.request_type,
-            "response_time": row.request_execution_time_ms
-        }
-
-    db_connection.close()
 
 
 def read_data_line_from_log_file(path: str):
