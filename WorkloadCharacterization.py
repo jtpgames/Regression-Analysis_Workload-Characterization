@@ -14,7 +14,7 @@ from pandas import DataFrame
 import plotly.express as px
 from plotly.graph_objs import Figure
 from plotly.subplots import make_subplots
-from rast_common import read_all_performance_metrics_from_db
+from rast_common.main import read_all_performance_metrics_from_db
 
 from Common import detect_response_time_outliers, remove_outliers_from, read_data_line_from_log_file
 
