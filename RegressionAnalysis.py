@@ -279,12 +279,12 @@ def main(
     # X_test = orig_X_test.iloc[:, [2, 5]]
 
     # take a subset of X's columns (PR 1, PR 3, Request Type)
-    X_train = orig_X_train.iloc[:, [2, 4, 5]]
-    X_test = orig_X_test.iloc[:, [2, 4, 5]]
+    # X_train = orig_X_train.iloc[:, [2, 4, 5]]
+    # X_test = orig_X_test.iloc[:, [2, 4, 5]]
 
     # take a subset of X's columns (PR 1, PR 3, Request Type, RPS, RPM)
-    # X_train = orig_X_train.iloc[:, [2, 4, 5, 7, 8]]
-    # X_test = orig_X_test.iloc[:, [2, 4, 5, 7, 8]]
+    X_train = orig_X_train.iloc[:, [2, 4, 5, 7, 8]]
+    X_test = orig_X_test.iloc[:, [2, 4, 5, 7, 8]]
 
     # take a subset of X's columns (PR 1, Request Type, RPS, RPM)
     # X_train = orig_X_train.iloc[:, [2, 5, 7, 8]]
