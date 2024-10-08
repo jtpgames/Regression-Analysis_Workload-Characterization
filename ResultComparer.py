@@ -396,10 +396,17 @@ def main(
         validationData = validationData.loc[:, ['Request Type', 'Response Time s']]
         validationData.rename(columns={'Response Time s': 'Processing Time s', 'Request Type': "ReqType"}, inplace=True)
 
-        for filename in glob.iglob(os.path.join(comparison_data_path, '**', '*.log'), recursive=True):
-            if f"_{intensity}-" not in filename:
-                continue
+        # retrieve all file names of log files that match the intensity
+        all_files = [f for f in glob.iglob(os.path.join(comparison_data_path, '**', '*.log'), recursive=True) if f"_{intensity}-" in f]
 
+        # Separate files based on folder names
+        ridge_files = [f for f in all_files if "Ridge" in os.path.dirname(os.path.dirname(f))]
+        dt_files = [f for f in all_files if "DT" in os.path.dirname(os.path.dirname(f))]
+
+        # Append dt_files to the end of ridge_files so that ridge model is always first regardless of OS order.
+        ridge_files.extend(dt_files)
+
+        for filename in ridge_files:
             print(filename)
 
             # Extract the directory path and file name from the full path
