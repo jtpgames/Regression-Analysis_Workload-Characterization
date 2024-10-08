@@ -434,7 +434,7 @@ def main(
 
     sklearn2pmml(
         make_pmml_pipeline(
-            estimator,
+            estimator.best_estimator_,
             estimator.feature_names_in_,
             "Response Time s"
         ),
