@@ -447,7 +447,7 @@ def main(
     with open(f"{predictive_model_filename}.onnx", "wb") as f:
         f.write(onx.SerializeToString())
 
-    exit(1)
+    exit(0)
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
 
