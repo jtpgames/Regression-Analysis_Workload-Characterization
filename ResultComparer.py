@@ -399,6 +399,9 @@ def main(
         # retrieve all file names of log files that match the intensity
         all_files = [f for f in glob.iglob(os.path.join(comparison_data_path, '**', '*.log'), recursive=True) if f"_{intensity}-" in f]
 
+        # sort all remaining files because iglob returns the files in an "arbitrary" order.
+        all_files.sort(reverse=True)
+
         # Separate files based on folder names
         ridge_files = [f for f in all_files if "Ridge" in os.path.dirname(os.path.dirname(f))]
         dt_files = [f for f in all_files if "DT" in os.path.dirname(os.path.dirname(f))]
